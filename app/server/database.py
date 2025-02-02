@@ -1,11 +1,19 @@
-import motor.motor_asyncio
+import os
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
 from bson.objectid import ObjectId
 
-MONGO_DETAILS = "mongodb://localhost:27017"
+# Load environment variables
+load_dotenv()
 
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_DETAILS)
+MONGO_URI = os.getenv("MONGO_URI")
 
-database = client.foods
+if not MONGO_URI:
+    raise ValueError("MONGO_URI is not set in the .env file")
+
+client = AsyncIOMotorClient(MONGO_URI)
+
+database = client["fuudiy"]
 
 food_collection = database.get_collection("foods")
 
@@ -15,12 +23,13 @@ food_collection = database.get_collection("foods")
 def food_helper(food) -> dict:
     return {
         "id": str(food["_id"]),
+        "url_id": str(food["url_id"]),
         "name": food["name"],
         "ingredients": food["ingredients"],
         "category": food["category"],
         "country": food["country"],
         "keywords": food["keywords"],
-        "popularity": food["popularity"]
+#        "popularity": food["popularity"]
     }
 
 
