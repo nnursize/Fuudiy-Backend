@@ -23,13 +23,13 @@ food_collection = database.get_collection("foods")
 def food_helper(food) -> dict:
     return {
         "id": str(food["_id"]),
-        "url_id": str(food["url_id"]),
-        "name": food["name"],
-        "ingredients": food["ingredients"],
-        "category": food["category"],
-        "country": food["country"],
-        "keywords": food["keywords"],
-#        "popularity": food["popularity"]
+        "url_id": int(food.get("url_id", 0)),  # Handles missing 'url_id'
+        "name": food.get("name", "Unknown"),
+        "ingredients": food.get("ingredients", []),
+        "category": food.get("category", "Uncategorized"),
+        "country": food.get("country", "Unknown"),
+        "keywords": food.get("keywords", []),  # Prevents KeyError
+        "popularity": food.get("popularity", 0)
     }
 
 
@@ -40,6 +40,12 @@ async def retrieve_foods():
         foods.append(food_helper(food))
     return foods
 
+# Retrieve first 10 foods present in the database
+async def retrieve_first_10_foods():
+    foods = []
+    async for food in food_collection.find().limit(10):  # Limit to 10 results
+        foods.append(food_helper(food))
+    return foods
 
 # Add a new food item into the database
 async def add_food(food_data: dict) -> dict:
