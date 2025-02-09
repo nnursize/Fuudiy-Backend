@@ -1,5 +1,6 @@
 from server.database import database
 from bson import ObjectId
+import ast
 
 food_collection = database.get_collection("foods")
 
@@ -9,10 +10,10 @@ def food_helper(food) -> dict:
         "id": str(food["_id"]),
         "url_id": str(food.get("url_id", "")),  # Use `.get()` to prevent KeyErrors
         "name": food.get("name", "Unknown"),
-        "ingredients": food.get("ingredients", []),
+        "ingredients": ast.literal_eval(food["ingredients"]) if isinstance(food.get("ingredients"), str) else [],
         "category": food.get("category", "Uncategorized"),
         "country": food.get("country", "Unknown"),
-        "keywords": food.get("keywords", []),
+        "keywords": ast.literal_eval(food["keywords"]) if isinstance(food.get("keywords"), str) else [],
     }
 
 # Update a food item with a matching ID
@@ -39,7 +40,7 @@ async def delete_food(id: str):
     return False
 
 # Retrieve all foods (Synchronous - Use PyMongo)
-def retrieve_foods():
+async def retrieve_foods():
     return [food_helper(food) for food in food_collection.find()]
 
 # Add a new food (Ensure MongoDB uses async if needed)
@@ -50,11 +51,11 @@ async def add_food(food_data: dict) -> dict:
 
 # Retrieve a food item by ID
 async def retrieve_food(id: str) -> dict:
-    food = await food_collection.find_one({"_id": ObjectId(id)})
+    food =  food_collection.find_one({"_id": ObjectId(id)})
     if food:
         return food_helper(food)
     return None  # Avoid returning unhandled NoneType
 
-# Retrieve top 3 foods
+# Retrieve top 4 foods
 async def get_top_4_food():
     return [food_helper(food) for food in food_collection.find({"country": "Indian"}).limit(4)]
