@@ -5,7 +5,7 @@ from bson.objectid import ObjectId
 from config import MONGO_URI, DATABASE_NAME
 from pymongo import MongoClient
 
-client = MongoClient(MONGO_URI)
+client = AsyncIOMotorClient(MONGO_URI)
 database = client[DATABASE_NAME]
 try:
     client.admin.command('ping')
