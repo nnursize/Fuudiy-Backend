@@ -5,6 +5,7 @@ from server.services.food_service import (
     delete_food,
     retrieve_food,
     retrieve_foods,
+    retrieve_first_10_foods,
     update_food,
     get_top_4_food,  # Ensure this is correct
 )
@@ -37,7 +38,7 @@ async def add_food_data(food: FoodSchema = Body(...)):
 
 @router.get("/", response_description="Foods retrieved")
 async def get_foods():
-    foods = retrieve_foods()
+    foods = await retrieve_first_10_foods()
     if foods:
         return ResponseModel(foods, "Food data retrieved successfully")
     return ResponseModel(foods, "Empty list returned")
