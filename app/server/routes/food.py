@@ -18,6 +18,7 @@ from server.models.food import (
 
 router = APIRouter()
 
+
 @router.get("/food", response_model=list)
 async def fetch_foods():
     try:
