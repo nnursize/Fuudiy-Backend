@@ -1,6 +1,6 @@
-import os
-from dotenv import load_dotenv
+
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
 
 # Load environment variables
