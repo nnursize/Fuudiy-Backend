@@ -11,10 +11,10 @@ def food_helper(food) -> dict:
         "id": str(food["_id"]),
         "url_id": int(food.get("url_id", 0)),  # Handles missing 'url_id'
         "name": food.get("name", "Unknown"),
-        "ingredients": food.get("ingredients", []),
+        "ingredients": ast.literal_eval(food["ingredients"]) if isinstance(food.get("ingredients"), str) else [],
         "category": food.get("category", "Uncategorized"),
         "country": food.get("country", "Unknown"),
-        "keywords": food.get("keywords", []),  # Prevents KeyError
+        "keywords": ast.literal_eval(food["keywords"]) if isinstance(food.get("keywords"), str) else [],
         "popularity": food.get("popularity", 0)
     }
 
