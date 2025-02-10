@@ -1,10 +1,10 @@
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from bson.objectid import ObjectId
 from config import MONGO_URI, DATABASE_NAME
-from pymongo import MongoClient
 
-client = MongoClient(MONGO_URI)
+if not MONGO_URI:
+    raise ValueError("MONGO_URI is not set in the .env file")
+
+client = AsyncIOMotorClient(MONGO_URI)
+
 database = client[DATABASE_NAME]
-print("✅ Connected to MongoDB successfully!")
-print("📌 Collections:", database.list_collection_names())

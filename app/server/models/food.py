@@ -4,23 +4,23 @@ from pydantic import BaseModel, Field
 
 
 class FoodSchema(BaseModel):
+    url_id: int = Field(..., ge=0)  # Ensure it's a positive integer
     name: str = Field(...)
     ingredients: List[str] = Field(...)
     category: str = Field(...)
     country: str = Field(...)
     keywords: List[str] = Field(...)
-    popularity: float = Field(ge=0, le=5)
+    popularity: Optional[float] = Field(None, ge=0, le=5)  # Optional but must be 0-5 if provided
 
     class Config:
         # Schema metadata for documentation purposes
-        schema_extra = {
+        json_schema_extra = {
             "example": {
-                "_id": "1",
+                "id": "6797db4dabdb35cd4e93ea60",
+                "url_id": 1,
                 "name": "27 Wali Chops",
                 "ingredients": [
-                    "black pepper", "cardamom pods", "chili powder", "cumin",
-                    "garam masala", "garlic", "ginger", "lamb cutlets",
-                    "onion", "paprika", "tomato paste", "water", "whole cloves"
+                    "black pepper", "cardamom pods", "chili powder", "cumin"
                 ],
                 "category": "Lamb/Sheep",
                 "country": "Indian",
@@ -31,6 +31,7 @@ class FoodSchema(BaseModel):
 
 
 class UpdateFoodModel(BaseModel):
+    url_id: Optional[int]
     name: Optional[str]
     ingredients: Optional[List[str]]
     category: Optional[str]
@@ -39,7 +40,7 @@ class UpdateFoodModel(BaseModel):
     popularity: Optional[float]
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Updated Wali Chops",
                 "ingredients": [

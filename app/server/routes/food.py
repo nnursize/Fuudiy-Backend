@@ -5,6 +5,7 @@ from server.services.food_service import (
     delete_food,
     retrieve_food,
     retrieve_foods,
+    retrieve_first_10_foods,
     update_food,
     get_top_4_food,  # Ensure this is correct
 )
@@ -16,6 +17,7 @@ from server.models.food import (
 )
 
 router = APIRouter()
+
 
 @router.get("/food", response_model=list)
 async def fetch_foods():
@@ -37,15 +39,18 @@ async def add_food_data(food: FoodSchema = Body(...)):
 
 @router.get("/", response_description="Foods retrieved")
 async def get_foods():
-    foods = retrieve_foods()
+    foods = await retrieve_first_10_foods()
     if foods:
         return ResponseModel(foods, "Food data retrieved successfully")
     return ResponseModel(foods, "Empty list returned")
 
 
-@router.get("/{id}", response_description="Food data retrieved")
-async def get_food_data(id):
-    food = retrieve_food(id)
-    if food:
-        return ResponseModel(food, "Food data retrieved successfully")
-    return ErrorResponseModel("An error occurred.", 404, "Food doesn't exist.")
+@router.get("/food/{id}")
+async def get_food(id: str):
+    try:
+        food = await retrieve_food(id)  # ✅ Await the async function
+        if not food:
+            raise HTTPException(status_code=404, detail="Food not found")
+        return jsonable_encoder(food)  # ✅ Now `food` is actual data, not a coroutine
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
