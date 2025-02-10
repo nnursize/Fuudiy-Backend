@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from server.routes.food import router as FoodRouter
 from server.routes.user import router as UserRouter
+from server.routes.user_comments import router as UserCommentsRouter
 import uvicorn
 
 app = FastAPI()
@@ -11,12 +12,13 @@ app.add_middleware(
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],  
+    allow_headers=["*"],
 )
 
-# Include routers directly
-app.include_router(FoodRouter)
-app.include_router(UserRouter)
+# Include routers with unique prefixes
+app.include_router(FoodRouter, prefix="/food")
+app.include_router(UserRouter, prefix="/users", tags=["User"])
+app.include_router(UserCommentsRouter, prefix="/comments", tags=["Comment"])
 
 @app.get("/", tags=["Root"])
 async def read_root():

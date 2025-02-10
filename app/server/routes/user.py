@@ -14,46 +14,57 @@ from server.models.user import (
     UpdateUserModel,
 )
 
-router = APIRouter()
+router = APIRouter() 
 
-@router.post("/", response_description="User data added into the database")
+@router.get("/", tags=["User"], response_description="Get all users")
+async def get_all_users():
+    """
+    Fetch all users from the database.
+    """
+    try:
+        users = await retrieve_users()
+        if not users:
+            return ResponseModel([], "No users found in the database.")
+        return ResponseModel(users, "Users retrieved successfully.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{id}", tags=["User"], response_description="Get a specific user by ID")
+async def get_user(id: str):
+    """
+    Fetch a specific user by their ID.
+    """
+    user = await retrieve_user(id)
+    if user:
+        return ResponseModel(user, f"User with ID {id} retrieved successfully.")
+    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
+
+@router.post("/", tags=["User"], response_description="Add a new user to the database")
 async def add_user_data(user: UserSchema = Body(...)):
+    """
+    Add a new user to the database.
+    """
     user = jsonable_encoder(user)
     new_user = await add_user(user)
     return ResponseModel(new_user, "User added successfully.")
 
-
-@router.get("/", response_description="Users retrieved")
-async def get_users():
-    users = await retrieve_users()
-    if users:
-        return ResponseModel(users, "User data retrieved successfully")
-    return ResponseModel(users, "Empty list returned")
-
-
-@router.get("/{id}", response_description="User data retrieved")
-async def get_user(id: str):
-    user = await retrieve_user(id)
-    if user:
-        return ResponseModel(user, "User data retrieved successfully")
-    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
-
-
-@router.put("/{id}", response_description="Update a user")
+@router.put("/{id}", tags=["User"], response_description="Update user data by ID")
 async def update_user_data(id: str, req: UpdateUserModel = Body(...)):
+    """
+    Update a user's data by their ID.
+    """
     req = {k: v for k, v in req.dict().items() if v is not None}
     updated_user = await update_user(id, req)
     if updated_user:
-        return ResponseModel(
-            f"User with ID {id} update is successful",
-            "User updated successfully",
-        )
+        return ResponseModel(f"User with ID {id} updated successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
-
-@router.delete("/{id}", response_description="Delete a user")
+@router.delete("/{id}", tags=["User"], response_description="Delete a user by ID")
 async def delete_user_data(id: str):
+    """
+    Delete a user by their ID.
+    """
     deleted_user = await delete_user(id)
     if deleted_user:
-        return ResponseModel(f"User with ID {id} removed", "User deleted successfully")
+        return ResponseModel(f"User with ID {id} deleted successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
