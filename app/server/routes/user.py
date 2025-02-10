@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.encoders import jsonable_encoder
-from app.server.services.user_service import (
+from server.services.user_service import (
     add_user,
     delete_user,
     retrieve_user,
     retrieve_all_users,
     update_user
 )
-from app.server.models.user import (
+from server.models.user import (
     ErrorResponseModel,
     ResponseModel,
     UserSchema,
