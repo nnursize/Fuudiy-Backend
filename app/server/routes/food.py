@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.encoders import jsonable_encoder
-from server.services.food_service import (
+from app.server.services.food_service import (
     add_food,
     delete_food,
     retrieve_food,
@@ -9,7 +9,7 @@ from server.services.food_service import (
     update_food,
     get_top_4_food,  # Ensure this is correct
 )
-from server.models.food import (
+from app.server.models.food import (
     ErrorResponseModel,
     ResponseModel,
     FoodSchema,
