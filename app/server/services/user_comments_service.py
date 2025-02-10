@@ -1,40 +1,46 @@
+import logging
+from bson.objectid import ObjectId
 from server.database import database
-from bson import ObjectId
 
 comment_collection = database.get_collection("user_comments")
 
-
 def comment_helper(comment) -> dict:
     return {
-        "id": str(comment["_id"]),
-        "userId": comment["userId"],
-        "foodId": comment["foodId"],
-        "rate": comment["rate"],
+        "id": str(comment["_id"]),  # Convert ObjectId to string
+        "userId": str(comment["userId"]),  # Ensure userId is a string
+        "foodId": str(comment["foodId"]),  # Ensure foodId is a string
+        "rate": comment.get("rate", 0),
         "comment": comment.get("comment", ""),
     }
 
+# Retrieve all comments
+async def retrieve_comments():
+    try:
+        comments = []
+        async for comment in comment_collection.find():
+            comment["_id"] = str(comment["_id"])  # Convert ObjectId to string
+            comments.append(comment_helper(comment))
+        return comments
+    except Exception as e:
+        logging.error(f"Error retrieving comments: {str(e)}")
+        raise
 
-# CRUD functions
+# Retrieve a specific comment by ID
+async def retrieve_comment(id: str) -> dict:
+    try:
+        comment = await comment_collection.find_one({"_id": ObjectId(id)})
+        if comment:
+            return comment_helper(comment)
+    except Exception as e:
+        raise Exception(f"Error retrieving comment: {str(e)}")
 
+# Add a new comment
 async def add_comment(comment_data: dict) -> dict:
     comment = await comment_collection.insert_one(comment_data)
     new_comment = await comment_collection.find_one({"_id": comment.inserted_id})
     return comment_helper(new_comment)
 
-
-async def retrieve_comments():
-    comments = []
-    async for comment in comment_collection.find():
-        comments.append(comment_helper(comment))
-    return comments
-
-
-async def retrieve_comment(id: str) -> dict:
-    comment = await comment_collection.find_one({"_id": ObjectId(id)})
-    if comment:
-        return comment_helper(comment)
-
-
+# Update an existing comment
 async def update_comment(id: str, data: dict) -> bool:
     if len(data) < 1:
         return False
@@ -46,8 +52,8 @@ async def update_comment(id: str, data: dict) -> bool:
         return updated_comment.modified_count > 0
     return False
 
-
-async def delete_comment(id: str):
+# Delete a comment by ID
+async def delete_comment(id: str) -> bool:
     comment = await comment_collection.find_one({"_id": ObjectId(id)})
     if comment:
         await comment_collection.delete_one({"_id": ObjectId(id)})

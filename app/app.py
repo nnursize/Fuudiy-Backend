@@ -16,7 +16,7 @@ app.add_middleware(
 )
 
 # Include routers with unique prefixes
-app.include_router(FoodRouter, prefix="/food")
+app.include_router(FoodRouter, prefix="/food", tags=["Food"])
 app.include_router(UserRouter, prefix="/users", tags=["User"])
 app.include_router(UserCommentsRouter, prefix="/comments", tags=["Comment"])
 
