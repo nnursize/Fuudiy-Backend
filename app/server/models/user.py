@@ -1,18 +1,16 @@
-from typing import List, Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
+
 
 class UserSchema(BaseModel):
     name: str
     email: str
     password: str
-    bio: Optional[str] = None
-    avatarId: str
-    gender: str
-    ratedFoods: List[dict] = []  # Each rated food contains a foodId, rate, and comment
-    likedFoods: List[int] = []    # List of liked foodIds
-    likedIngredients: List[str] = []
-    dislikedIngredients: List[str] = []
-    preferences: dict = {}
+    bio: Optional[str] = Field(None)
+    avatarId: Optional[str] = Field(None)
+    likedIngredients: Optional[List[str]] = Field(default_factory=list)
+    dislikedIngredients: Optional[List[str]] = Field(default_factory=list)
+    preferences: Optional[dict] = Field(default_factory=dict)
 
     class Config:
         json_schema_extra = {
@@ -22,17 +20,12 @@ class UserSchema(BaseModel):
                 "password": "123456",
                 "bio": "Food enthusiast",
                 "avatarId": "food1",
-                "gender": "male",
-                "ratedFoods": [
-                    {"foodId": 1, "rate": 1, "comment": "This is not for me to enjoy."},
-                    {"foodId": 2, "rate": 3, "comment": "It's okay, but I've had better."}
-                ],
-                "likedFoods": [3, 4, 6],
                 "likedIngredients": ["cheese", "chicken", "tomato", "basil"],
-                "dislikedIngredients": ["butter", "fish", "meat", "onions", "garlic", "olives", "mustard"],
-                "preferences": {"cookingTime": "<30 mins", "dietType": "vegetarian"}
+                "dislikedIngredients": ["butter", "fish", "meat", "onions"],
+                "preferences": {"cookingTime": "<30 mins", "dietType": "Vegetarian"}
             }
         }
+
 
 class UpdateUserModel(BaseModel):
     name: Optional[str]
@@ -40,12 +33,17 @@ class UpdateUserModel(BaseModel):
     password: Optional[str]
     bio: Optional[str]
     avatarId: Optional[str]
-    gender: Optional[str]
-    ratedFoods: Optional[List[dict]] = []
-    likedFoods: Optional[List[int]] = []
-    likedIngredients: Optional[List[str]] = []
-    dislikedIngredients: Optional[List[str]] = []
-    preferences: Optional[dict] = {}
+    likedIngredients: Optional[List[str]]
+    dislikedIngredients: Optional[List[str]]
+    preferences: Optional[dict]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "bio": "Updated food enthusiast",
+                "avatarId": "updatedFood1"
+            }
+        }
 
 
 def ResponseModel(data, message):
@@ -54,6 +52,7 @@ def ResponseModel(data, message):
         "code": 200,
         "message": message,
     }
+
 
 def ErrorResponseModel(error, code, message):
     return {"error": error, "code": code, "message": message}

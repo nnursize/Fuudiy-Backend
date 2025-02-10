@@ -1,4 +1,4 @@
-from app.server.database import database
+from server.database import database
 from bson import ObjectId
 import ast
 

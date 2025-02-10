@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 
-# Include router without prefix issue
+# Include routers directly
 app.include_router(FoodRouter)
 app.include_router(UserRouter)
 
