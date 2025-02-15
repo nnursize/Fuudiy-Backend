@@ -1,67 +1,70 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pymongo import MongoClient
-from pydantic import BaseModel
-from typing import Dict, List
-from bson import ObjectId
+from fastapi import APIRouter, Body, HTTPException
+from fastapi.encoders import jsonable_encoder
+from server.services.user_service import (
+    add_user,
+    delete_user,
+    retrieve_user,
+    retrieve_users,
+    update_user,
+)
+from server.models.user import (
+    ErrorResponseModel,
+    ResponseModel,
+    UserSchema,
+    UpdateUserModel,
+)
 
-app = FastAPI()
+router = APIRouter() 
 
-client = MongoClient("mongodb://localhost:27017")
-db = client["your_database"]
-users_collection = db["users"]
+@router.get("/", tags=["User"], response_description="Get all users")
+async def get_all_users():
+    """
+    Fetch all users from the database.
+    """
+    try:
+        users = await retrieve_users()
+        if not users:
+            return ResponseModel([], "No users found in the database.")
+        return ResponseModel(users, "Users retrieved successfully.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Define Pydantic model for survey response
-class SurveyResponse(BaseModel):
-    user_id: str
-    responses: Dict[str, any]
+@router.get("/{id}", tags=["User"], response_description="Get a specific user by ID")
+async def get_user(id: str):
+    """
+    Fetch a specific user by their ID.
+    """
+    user = await retrieve_user(id)
+    if user:
+        return ResponseModel(user, f"User with ID {id} retrieved successfully.")
+    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
-# Mapping question IDs to MongoDB fields
-question_mapping = {
-    "question2": "liked_cuisines",
-    "question3": "allergic_ingredients",
-    "question4": "food_preferences",
-    "question5": "liked_ingredients",
-    "question6": "food_ratings.sushi",
-    "question7": "food_ratings.pizza",
-    "question8": "food_ratings.dumplings",
-    "question9": "food_ratings.hamburger",
-    "question10": "food_ratings.fried_chicken",
-    "question11": "food_ratings.taco",
-    "question12": "food_ratings.pasta",
-    "question13": "disliked_foods"
-}
+@router.post("/", tags=["User"], response_description="Add a new user to the database")
+async def add_user_data(user: UserSchema = Body(...)):
+    """
+    Add a new user to the database.
+    """
+    user = jsonable_encoder(user)
+    new_user = await add_user(user)
+    return ResponseModel(new_user, "User added successfully.")
 
+@router.put("/{id}", tags=["User"], response_description="Update user data by ID")
+async def update_user_data(id: str, req: UpdateUserModel = Body(...)):
+    """
+    Update a user's data by their ID.
+    """
+    req = {k: v for k, v in req.dict().items() if v is not None}
+    updated_user = await update_user(id, req)
+    if updated_user:
+        return ResponseModel(f"User with ID {id} updated successfully.", "Success")
+    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
-# POST: Submit survey responses
-@router.post("/submit-survey/")
-async def submit_survey(survey: SurveyResponse):
-    user_id = survey.user_id
-    user = users_collection.find_one({"_id": ObjectId(user_id)})
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Process survey responses
-    update_data = {}
-    for question_id, value in survey.responses.items():
-        if question_id in question_mapping:
-            field = question_mapping[question_id]
-            update_data[f"preferences.{field}"] = value
-
-    # Update user document in MongoDB
-    users_collection.update_one(
-        {"_id": ObjectId(user_id)},
-        {"$set": update_data}
-    )
-
-    return {"message": "Survey responses saved successfully!"}
-
-# GET: Retrieve user preferences
-@router.get("/get-user-preferences/{user_id}")
-async def get_user_preferences(user_id: str):
-    user = users_collection.find_one({"_id": ObjectId(user_id)}, {"_id": 0, "preferences": 1})
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return user.get("preferences", {})
+@router.delete("/{id}", tags=["User"], response_description="Delete a user by ID")
+async def delete_user_data(id: str):
+    """
+    Delete a user by their ID.
+    """
+    deleted_user = await delete_user(id)
+    if deleted_user:
+        return ResponseModel(f"User with ID {id} deleted successfully.", "Success")
+    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
