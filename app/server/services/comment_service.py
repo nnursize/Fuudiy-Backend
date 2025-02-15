@@ -94,9 +94,16 @@ async def retrieve_comments_for_user(user_id: str):
 
 # Add a new comment
 async def add_comment(comment_data: dict) -> dict:
+    # Convert userId & foodId to ObjectId before inserting into MongoDB
+    comment_data["userId"] = ObjectId(comment_data["userId"]) if isinstance(comment_data["userId"], str) else comment_data["userId"]
+    comment_data["foodId"] = ObjectId(comment_data["foodId"]) if isinstance(comment_data["foodId"], str) else comment_data["foodId"]
+
+    # Insert into MongoDB
     comment = await comment_collection.insert_one(comment_data)
     new_comment = await comment_collection.find_one({"_id": comment.inserted_id})
+    
     return comment_helper(new_comment)
+
 
 
 # Update a comment
