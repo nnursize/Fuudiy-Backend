@@ -9,12 +9,11 @@ comment_collection = database.get_collection("user_comments")
 # Helper function to convert MongoDB comment to a serializable format
 def comment_helper(comment) -> dict:
     return {
-        "id": str(comment["_id"]),
-        "user_id": str(comment["userId"]),
-        "food_id": str(comment["foodId"]),
-        "comment": comment["comment"],
-        "userName": comment.get("userName", ""),
-        "userAvatar": comment.get("userAvatar", ""),
+        "id": str(comment["_id"]),  # Convert ObjectId to string
+        "userId": str(comment["userId"]),  # Ensure userId is a string
+        "foodId": str(comment["foodId"]),  # Ensure foodId is a string
+        "rate": comment.get("rate", 0),
+        "comment": comment.get("comment", ""),
     }
 
 async def retrieve_comments_for_food(food_id: str):

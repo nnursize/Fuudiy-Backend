@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from server.routes.food import router as FoodRouter
 from server.routes.user import router as UserRouter
-from server.routes.user_comments import router as UserCommentsRouter
+from server.routes.comment import router as UserCommentsRouter
 import uvicorn
 
 app = FastAPI()

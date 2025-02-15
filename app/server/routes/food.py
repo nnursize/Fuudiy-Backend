@@ -19,7 +19,7 @@ from server.models.food import (
 router = APIRouter()
 
 
-@router.get("/food", tags=["Food"], response_model=list)
+@router.get("/", tags=["Food"], response_model=list)
 async def fetch_foods():
     try:
         foods = await get_top_4_food()
@@ -37,15 +37,15 @@ async def add_food_data(food: FoodSchema = Body(...)):
     return ResponseModel(new_food, "Food added successfully.")
 
 
-@router.get("/foods", response_description="Foods retrieved")
-async def get_foods():
-    foods = await retrieve_first_10_foods()
-    if foods:
-        return ResponseModel(foods, "Food data retrieved successfully")
-    return ResponseModel(foods, "Empty list returned")
+# @router.get("/", response_description="Foods retrieved")
+# async def get_foods():
+#     foods = await retrieve_first_10_foods()
+#     if foods:
+#         return ResponseModel(foods, "Food data retrieved successfully")
+#     return ResponseModel(foods, "Empty list returned")
 
 
-@router.get("/food/{id}", tags=["Food"])
+@router.get("/{id}", tags=["Food"])
 async def get_food(id: str):
     try:
         food = await retrieve_food(id)

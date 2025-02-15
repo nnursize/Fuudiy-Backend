@@ -34,8 +34,8 @@ PydanticObjectId = Annotated[
 class CommentSchema(BaseModel):
     user_id: PydanticObjectId = Field(..., alias="userId")
     food_id: PydanticObjectId = Field(..., alias="foodId")
-    rate: int = Field(..., ge=0)
-    comment: str = Field(...)
+    rate: Optional[int] = Field(..., ge=1, le=5)  # Ensure rate is between 1 and 5
+    comment: Optional[str] = Field(None)
 
     class Config:
         populate_by_name = True
@@ -50,15 +50,16 @@ class CommentSchema(BaseModel):
         }
 
 class UpdateCommentModel(BaseModel):
+    rate: Optional[int] = Field(None, ge=1, le=5)
     comment: Optional[str]
 
     class Config:
         json_schema_extra = {
             "example": {
-                "comment": "This food was delicious!"
+                "rate": 4,
+                "comment": "Updated comment text."
             }
         }
-
 
 def ResponseModel(data, message):
     return {
