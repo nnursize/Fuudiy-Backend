@@ -37,7 +37,7 @@ async def add_food_data(food: FoodSchema = Body(...)):
     return ResponseModel(new_food, "Food added successfully.")
 
 
-@router.get("/", tags=["Food"], response_description="Foods retrieved")
+@router.get("/foods", response_description="Foods retrieved")
 async def get_foods():
     foods = await retrieve_first_10_foods()
     if foods:
@@ -48,9 +48,9 @@ async def get_foods():
 @router.get("/food/{id}", tags=["Food"])
 async def get_food(id: str):
     try:
-        food = await retrieve_food(id)  # ✅ Await the async function
+        food = await retrieve_food(id)
         if not food:
             raise HTTPException(status_code=404, detail="Food not found")
-        return jsonable_encoder(food)  # ✅ Now `food` is actual data, not a coroutine
+        return jsonable_encoder(food)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
