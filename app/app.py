@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from server.routes.food import router as FoodRouter
+from server.routes.comment import router as CommentRouter
 import uvicorn
 
 app = FastAPI()
@@ -15,6 +16,8 @@ app.add_middleware(
 
 # Include router without prefix issue
 app.include_router(FoodRouter)
+app.include_router(CommentRouter)
+
 
 @app.get("/", tags=["Root"])
 async def read_root():
