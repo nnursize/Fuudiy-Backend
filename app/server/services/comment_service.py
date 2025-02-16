@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from server.database import database
 from bson import ObjectId
 from server.services.food_service import food_helper
@@ -60,36 +61,43 @@ async def retrieve_comments_for_food(food_id: str):
 
     return comments
 
+
 async def retrieve_comments_for_user(user_id: str):
-    pipeline = [
-        {"$match": {"userId": ObjectId(user_id)}},  # Match comments by user
-        {
-            "$lookup": {  # Join with foods collection
-                "from": "foods",
-                "localField": "foodId",
-                "foreignField": "_id",
-                "as": "food"
+    try:
+        user_id_obj = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+
+        pipeline = [
+            {"$match": {"userId": user_id_obj}},  # Match comments by user
+            {
+                "$lookup": {  # Join with foods collection
+                    "from": "foods",
+                    "localField": "foodId",
+                    "foreignField": "_id",
+                    "as": "food"
+                }
+            },
+            {"$unwind": {"path": "$food", "preserveNullAndEmptyArrays": True}},  # Allow missing foods
+            {
+                "$project": {
+                    "_id": 1,
+                    "comment": 1,
+                    "rate": 1,  # ✅ Ensure rate is included
+                    "foodId": "$food._id",
+                    "foodName": "$food.name"
+                }
             }
-        },
-        {"$unwind": "$food"},  # Flatten the food array
-        {
-            "$project": {
-                "_id": 1,  # Comment ID
-                "comment": 1,
-                "foodId": "$food._id",
-                "foodName": "$food.name",
-            }
-        }
-    ]
+        ]
 
-    comments = await comment_collection.aggregate(pipeline).to_list(length=None)
+        comments = await comment_collection.aggregate(pipeline).to_list(length=None)
 
-    # Convert ObjectId fields to strings before returning
-    for comment in comments:
-        comment["_id"] = str(comment["_id"])
-        comment["foodId"] = str(comment["foodId"])
+        for comment in comments:
+            comment["_id"] = str(comment["_id"])
+            comment["foodId"] = str(comment["foodId"]) if "foodId" in comment else None
 
-    return comments
+        return comments
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Add a new comment
