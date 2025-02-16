@@ -1,4 +1,5 @@
 import os
+from pathlib import Path  
 from google.cloud import storage
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -18,9 +19,12 @@ from server.models.food import (
     UpdateFoodModel,
 )
 
+current_file = Path(__file__)
+credentials_path = current_file.parents[3] / "gcs-key.json"
+
 router = APIRouter()
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "C:\\Users\\USER\\Desktop\\Fuudiy\\Fuudiy-Backend\\gcs-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 # Google Cloud Storage details
 BUCKET_NAME = "fuudiy_bucket"
 

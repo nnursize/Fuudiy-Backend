@@ -44,7 +44,7 @@ async def retrieve_comments_for_food(food_id: str):
                 "foodId": "$food._id",
                 "foodName": "$food.name",
                 "userId": "$user._id",
-                "userName": "$user.name",
+                "userName": "$user.username",
                 "userAvatar": "$user.avatar",
             }
         }

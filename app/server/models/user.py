@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class UserSchema(BaseModel):
-    name: str
+    username: str
     email: str
     password: str
     bio: Optional[str] = Field(None)
@@ -15,7 +15,7 @@ class UserSchema(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "dummy user",
+                "username": "dummy user",
                 "email": "dummyuser@gmail.com",
                 "password": "123456",
                 "bio": "Food enthusiast",
@@ -28,7 +28,7 @@ class UserSchema(BaseModel):
 
 
 class UpdateUserModel(BaseModel):
-    name: Optional[str]
+    username: Optional[str]
     email: Optional[str]
     password: Optional[str]
     bio: Optional[str]
