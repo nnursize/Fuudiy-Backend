@@ -4,6 +4,7 @@ from server.routes.food import router as FoodRouter
 from server.routes.user import router as UserRouter
 from server.routes.comment import router as UserCommentsRouter
 from server.routes.auth import router as AuthRouter
+from server.routes.survey import router as SurveyRouter
 
 from server.database import database
 
@@ -24,6 +25,7 @@ app.include_router(FoodRouter, prefix="/food", tags=["Food"])
 app.include_router(UserRouter, prefix="/users", tags=["User"])
 app.include_router(UserCommentsRouter, prefix="/comments", tags=["Comment"])
 app.include_router(AuthRouter, prefix="/auth", tags=["Auth"])
+app.include_router(SurveyRouter, prefix="/survey", tags=["Survey"])
 
 @app.get("/", tags=["Root"])
 async def read_root():
