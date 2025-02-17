@@ -135,3 +135,26 @@ async def delete_comment(id: str):
         await comment_collection.delete_one({"_id": ObjectId(id)})
         return True
     return False
+    
+
+async def update_rate_for_comment(user_id: str, food_id: str, new_rate: int):
+    if not ObjectId.is_valid(user_id) or not ObjectId.is_valid(food_id):
+        raise HTTPException(status_code=400, detail="Invalid ObjectId format.")
+
+    user_id_obj = ObjectId(user_id)
+    food_id_obj = ObjectId(food_id)
+
+    if not (1 <= new_rate <= 5):
+        raise HTTPException(status_code=400, detail="Rate must be between 1 and 5.")
+
+    comment = await comment_collection.find_one({"userId": user_id_obj, "foodId": food_id_obj})
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found.")
+
+    updated_comment = await comment_collection.update_one(
+        {"userId": user_id_obj, "foodId": food_id_obj},
+        {"$set": {"rate": new_rate}}
+    )
+
+    return updated_comment.modified_count > 0
+

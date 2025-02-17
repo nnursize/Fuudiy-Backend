@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from server.services.comment_service import (
     add_comment,
@@ -6,6 +6,7 @@ from server.services.comment_service import (
     retrieve_comments_for_food,
     retrieve_comments_for_user,
     update_comment,
+    update_rate_for_comment,
 )
 from server.models.comment import (
     ErrorResponseModel,
@@ -72,4 +73,15 @@ async def update_user_comment(id: str, req: UpdateCommentModel = Body(...)):
     if updated_comment:
         return ResponseModel(f"Comment with ID {id} updated successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"Comment with ID {id} not found")
+
+@router.put("/update-rate/{user_id}/{food_id}", tags=["Comment"], response_description="Update the rate of a comment")
+async def update_comment_rate(user_id: str, food_id: str, rate: int = Query(..., ge=1, le=5)):
+    """
+    Updates the rating of a comment based on userId and foodId.
+    The rate must be between 1 and 5.
+    """
+    if await update_rate_for_comment(user_id, food_id, rate):
+        return {"message": f"Rate updated successfully for user {user_id} on food {food_id}."}
+    raise HTTPException(status_code=404, detail="Comment not found")
+
 
