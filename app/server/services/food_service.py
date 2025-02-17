@@ -40,6 +40,7 @@ async def add_food(food_data: dict) -> dict:
     return food_helper(new_food)
 
 
+
 # Retrieve a food item with a matching ID
 async def retrieve_food(id: str) -> dict:
     food = await food_collection.find_one({"_id": ObjectId(id)})
