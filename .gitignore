@@ -1,4 +1,5 @@
 .venv/
 .env
+fenv/
 **/__pycache__/
 gcs-key.json
