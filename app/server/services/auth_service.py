@@ -4,6 +4,11 @@ from server.models.auth import UserCreate, UserLogin
 from server.models.auth import get_password_hash, verify_password, create_access_token, TokenData
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from config import SECRET_KEY
+
+ALGORITHM = "HS256"
+
+print("SECRET_KEY:", SECRET_KEY)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
