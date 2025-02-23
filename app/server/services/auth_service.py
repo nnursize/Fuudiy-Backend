@@ -1,7 +1,25 @@
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from server.models.auth import UserCreate, UserLogin
-from server.models.auth import get_password_hash, verify_password, create_access_token
+from server.models.auth import get_password_hash, verify_password, create_access_token, TokenData
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+def verify_access_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("user_id")
+        if user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        return user_id
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    return verify_access_token(token)
+
 
 async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
     existing_user = await db.users.find_one({"email": user.email})
