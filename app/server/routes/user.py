@@ -73,6 +73,19 @@ async def update_user_avatar(id: str, req: dict = Body(...)):
         return ResponseModel(f"User with ID {id} avatar updated successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
+@router.put("/update-disliked/{id}", tags=["User"], response_description="Update user disliked ingredients by ID")
+async def update_user_disliked(id: str, req: dict = Body(...)):
+    """
+    Update the user's disliked ingredients.
+    Expects a JSON payload like: {"dislikedIngredients": ["ingredient1", "ingredient2"]}
+    """
+    if "dislikedIngredients" not in req:
+        raise HTTPException(status_code=400, detail="dislikedIngredients is required")
+    updated = await update_user(id, {"dislikedIngredients": req["dislikedIngredients"]})
+    if updated:
+        return ResponseModel(f"User with ID {id} disliked ingredients updated successfully.", "Success")
+    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
+
 
 @router.delete("/{id}", tags=["User"], response_description="Delete a user by ID")
 async def delete_user_data(id: str):
