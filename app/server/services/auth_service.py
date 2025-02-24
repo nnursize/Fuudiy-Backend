@@ -12,16 +12,19 @@ print("SECRET_KEY:", SECRET_KEY)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+
 def verify_access_token(token: str):
+    print("token",token)
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("user_id")
-        if user_id is None:
+        print("payload",payload)
+        token_data = TokenData(**{"user_id": payload.get("user_id")})
+        if token_data.user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return user_id
+        return token_data.user_id
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-
+    
 def get_current_user(token: str = Depends(oauth2_scheme)):
     return verify_access_token(token)
 
@@ -39,7 +42,8 @@ async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
     result = await db.users.insert_one(user_data)
     user_id = str(result.inserted_id)
     access_token = create_access_token(data={"user_id": user_id})
-    
+    print("id: ",user_id)
+    print("access_token ",access_token)
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
@@ -52,5 +56,5 @@ async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
     
     user_id = str(existing_user["_id"])
     access_token = create_access_token(data={"user_id": user_id})
-    
+
     return {"access_token": access_token, "token_type": "bearer"}
