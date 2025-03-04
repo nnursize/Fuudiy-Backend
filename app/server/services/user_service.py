@@ -7,7 +7,7 @@ user_collection = database.get_collection("users")
 def user_helper(user) -> dict:
     return {
         "id": str(user["_id"]),
-        "name": user["name"],
+        "name": user["username"],
         "email": user["email"],
         "password": user["password"],
         "bio": user.get("bio", ""),
