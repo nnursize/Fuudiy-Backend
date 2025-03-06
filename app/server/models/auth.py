@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from jose import JWTError
 
 # Configuration (ideally from environment variables)
-SECRET_KEY = "your-secret-key"
+from config import SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
