@@ -74,12 +74,11 @@ def get_image_url(image_id):
 
         storage_client = storage.Client()
         bucket = storage_client.bucket(BUCKET_NAME)
-        
         blob = bucket.blob(f"{image_id}.png")
         
         if not blob.exists():
-            print(f"❌ Image {image_id}.png not found in bucket {BUCKET_NAME}")
-            return None  # Handle this gracefully in frontend
+            print(f"Image {image_id}.png not found in bucket {BUCKET_NAME}")
+            return None  
 
         # Generate a signed URL valid for 1 hour
         signed_url = blob.generate_signed_url(
@@ -96,7 +95,6 @@ def get_image_url(image_id):
 @router.get("/image/{image_id}")
 async def fetch_image(image_id: str):
     url = get_image_url(image_id)
-    #print(f"Generated URL: {url}")  # ✅ Print the URL in the backend logs
     if not url:
         raise HTTPException(status_code=404, detail="Image not found in GCS")
 
