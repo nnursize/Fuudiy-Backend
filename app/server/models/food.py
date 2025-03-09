@@ -3,6 +3,11 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
+class PopularitySchema(BaseModel):
+    rating: Optional[float] = Field(None, ge=0, le=5)  # Optional but must be between 0-5
+    votes: int = Field(..., ge=0)  # Required, must be non-negative
+
+
 class FoodSchema(BaseModel):
     url_id: int = Field(..., ge=0)  # Ensure it's a positive integer
     name: str = Field(...)
@@ -10,7 +15,7 @@ class FoodSchema(BaseModel):
     category: str = Field(...)
     country: str = Field(...)
     keywords: List[str] = Field(...)
-    popularity: Optional[float] = Field(None, ge=0, le=5)  # Optional but must be 0-5 if provided
+    popularity: Optional[PopularitySchema] = None  # Optional field for popularity
 
     class Config:
         # Schema metadata for documentation purposes
@@ -25,7 +30,7 @@ class FoodSchema(BaseModel):
                 "category": "Lamb/Sheep",
                 "country": "Indian",
                 "keywords": ["< 60 Mins", "Indian", "Meat", "Weeknight"],
-                "popularity": "3.2"
+                "popularity": {"rating": 3.2, "votes": 10}  # Example with both fields
             }
         }
 
@@ -37,7 +42,7 @@ class UpdateFoodModel(BaseModel):
     category: Optional[str]
     country: Optional[str]
     keywords: Optional[List[str]]
-    popularity: Optional[float]
+    popularity: Optional[PopularitySchema]  # Optional structured popularity field
 
     class Config:
         json_schema_extra = {
@@ -50,7 +55,7 @@ class UpdateFoodModel(BaseModel):
                 "category": "Lamb/Sheep",
                 "country": "Indian",
                 "keywords": ["< 30 Mins", "Indian", "Quick", "Meat"],
-                "popularity": "3.2"
+                "popularity": {"rating": 3.2, "votes": 10}
             }
         }
 

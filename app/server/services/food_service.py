@@ -9,13 +9,16 @@ food_collection = database.get_collection("foods")
 def food_helper(food) -> dict:
     return {
         "id": str(food["_id"]),
-        "url_id": int(food.get("url_id", 0)),  # Handles missing 'url_id'
+        "url_id": int(food.get("url_id", 0)),
         "name": food.get("name", "Unknown"),
         "ingredients": ast.literal_eval(food["ingredients"]) if isinstance(food.get("ingredients"), str) else [],
         "category": food.get("category", "Uncategorized"),
         "country": food.get("country", "Unknown"),
         "keywords": ast.literal_eval(food["keywords"]) if isinstance(food.get("keywords"), str) else [],
-        "popularity": food.get("popularity", 0)
+        "popularity": {
+            "rating": food.get("popularity", {}).get("rating"),  # Keep None if missing
+            "votes": food.get("popularity", {}).get("votes", 0)  # Default votes to 0
+        }
     }
 
 
@@ -35,9 +38,13 @@ async def retrieve_first_10_foods():
 
 # Add a new food item into the database
 async def add_food(food_data: dict) -> dict:
+    if "popularity" not in food_data:
+        food_data["popularity"] = {"votes": 0}  # Default value if popularity is missing
+
     food = await food_collection.insert_one(food_data)
     new_food = await food_collection.find_one({"_id": food.inserted_id})
     return food_helper(new_food)
+
 
 
 
@@ -50,14 +57,16 @@ async def retrieve_food(id: str) -> dict:
 
 # Update a food item with a matching ID
 async def update_food(id: str, data: dict):
-    # Return False if an empty request body is sent.
+    if "popularity" in data:
+        if "votes" not in data["popularity"]:
+            return False  # Reject updates that don't include required "votes"
+
     if len(data) < 1:
         return False
+
     food = await food_collection.find_one({"_id": ObjectId(id)})
     if food:
-        updated_food = await food_collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": data}
-        )
+        updated_food = await food_collection.update_one({"_id": ObjectId(id)}, {"$set": data})
         if updated_food.modified_count > 0:
             return True
     return False
