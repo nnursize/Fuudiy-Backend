@@ -147,14 +147,18 @@ async def update_rate_for_comment(user_id: str, food_id: str, new_rate: int):
     if not (1 <= new_rate <= 5):
         raise HTTPException(status_code=400, detail="Rate must be between 1 and 5.")
 
-    comment = await comment_collection.find_one({"userId": user_id_obj, "foodId": food_id_obj})
+    comment = await database.get_collection("user_comments").find_one(
+        {"userId": user_id_obj, "foodId": food_id_obj}
+    )
+    
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found.")
 
-    updated_comment = await comment_collection.update_one(
+    updated_comment = await database.get_collection("user_comments").update_one(
         {"userId": user_id_obj, "foodId": food_id_obj},
         {"$set": {"rate": new_rate}}
     )
 
     return updated_comment.modified_count > 0
+
 
