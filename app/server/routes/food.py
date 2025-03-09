@@ -27,6 +27,7 @@ current_file = Path(__file__)
 credentials_path = current_file.parents[3] / "gcs-key.json"
 
 router = APIRouter()
+food_collection = database.get_collection("foods")
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 # Google Cloud Storage details
@@ -157,4 +158,67 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
         return {"message": f"Rating updated successfully. New food rating: {new_rating:.2f}"}
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/update-popularity/{food_id}", tags=["Food"], response_description="Update food popularity")
+async def update_food_popularity(food_id: str, data: dict = Body(...)):
+    """
+    Updates the popularity rating of a food item.
+    Accepts only `rating` in the body.
+    Automatically updates votes and recalculates the new rating.
+    If `existing_vote` is True, votes remain the same. Otherwise, votes increase by 1.
+    """
+    try:
+        print(f"Received request: food_id={food_id}, data={data}")
+
+        # Validate food_id
+        if not ObjectId.is_valid(food_id):
+            raise HTTPException(status_code=400, detail="Invalid food_id format")
+
+        food_obj_id = ObjectId(food_id)
+
+        # Extract rating and existing_vote from the body
+        new_rating = data.get("rating")
+        existing_vote = data.get("existing_vote", False)  # Default to False
+
+        if new_rating is None:
+            raise HTTPException(status_code=400, detail="Missing required field: rating.")
+
+        print(f"Parsed values: new_rating={new_rating}, existing_vote={existing_vote}")
+
+        # Retrieve the current food document
+        food = await food_collection.find_one({"_id": food_obj_id})
+        if not food:
+            raise HTTPException(status_code=404, detail="Food not found.")
+
+        print(f"Existing food data: {food}")
+
+        # Get current votes
+        current_votes = food.get("popularity", {}).get("votes", 0)
+
+        # Determine new vote count
+        new_votes = current_votes if existing_vote else current_votes + 1
+
+        # Update the database
+        update_data = {
+            "popularity.rating": round(new_rating, 1),
+            "popularity.votes": new_votes
+        }
+
+        print(f"Updating database with: {update_data}")
+
+        result = await food_collection.update_one({"_id": food_obj_id}, {"$set": update_data})
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=500, detail="Failed to update food popularity.")
+
+        return {
+            "message": f"Food {food_id} popularity updated successfully.",
+            "new_rating": round(new_rating, 1),
+            "votes": new_votes
+        }
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
