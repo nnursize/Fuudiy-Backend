@@ -23,7 +23,7 @@ async def get_comments(food_id: str):
         comments = await retrieve_comments_for_food(food_id)
         if not comments:
             raise HTTPException(status_code=404, detail="No comments found.")
-        
+        #print(comments)
         # Convert ObjectId fields to strings if they still exist
         for comment in comments:
             comment["_id"] = str(comment["_id"])
@@ -47,6 +47,7 @@ async def get_comments_for_user(user_id: str):
 @router.post("/", tags=["Comment"], response_description="Comment added to the database")
 async def add_comment_data(comment: CommentSchema = Body(...)):
     comment = jsonable_encoder(comment)
+    print(comment)
     new_comment = await add_comment(comment)
     return ResponseModel(new_comment, "Comment added successfully.")
 

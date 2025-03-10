@@ -5,16 +5,23 @@ import torch
 import asyncio
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import subprocess
+from dotenv import load_dotenv
 import os
 
-router = APIRouter()
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import asyncio
+import subprocess
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 HF_ACCESS_TOKEN = os.getenv("HF_ACCESS_TOKEN")
 
-
+# Login to Hugging Face
 command = f"huggingface-cli login --token {HF_ACCESS_TOKEN}"
-
-# Run the command in the shell
 subprocess.run(command, shell=True, check=True)
 
 # Load translation models
@@ -24,8 +31,8 @@ models = {
         "model": AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-tr-en"),
     },
     "en-tr": {
-        "tokenizer": AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-en-trk"),
-        "model": AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-en-trk"),
+        "tokenizer": AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-tc-big-en-tr"),
+        "model": AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-tc-big-en-tr"),
     },
 }
 
@@ -34,15 +41,18 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 for key in models:
     models[key]["model"].to(device)
 
-# Request model
+# Translation Request
 class TranslationRequest(BaseModel):
     text: str
     target_lang: str  # "en" for English, "tr" for Turkish
 
+# Define Router
+router = APIRouter()
+
 @router.post("/", tags=["Translation"])
-async def translate(request: TranslationRequest):
+async def translate_comment(request: TranslationRequest):
+    print("***********")
     text = request.text.strip()
-    text = text.encode("utf-8").decode("utf-8")  # Ensure UTF-8 encoding
     target_lang = request.target_lang.lower()
 
     if not text:
@@ -58,6 +68,7 @@ async def translate(request: TranslationRequest):
 
     try:
         translated_text = await asyncio.to_thread(run_translation, text, tokenizer, model)
+        print(translated_text)
         return {"translated_text": translated_text}
     
     except Exception as e:
