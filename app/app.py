@@ -5,7 +5,7 @@ from server.routes.user import router as UserRouter
 from server.routes.comment import router as UserCommentsRouter
 from server.routes.auth import router as AuthRouter
 from server.routes.survey import router as SurveyRouter
-
+from server.routes.translation import router as TranslationRouter
 from server.database import database
 
 #from server.routes.translation import router as TranslationRouter
