@@ -27,6 +27,8 @@ app.include_router(UserRouter, prefix="/users", tags=["User"])
 app.include_router(UserCommentsRouter, prefix="/comments", tags=["Comment"])
 app.include_router(AuthRouter, prefix="/auth", tags=["Auth"])
 app.include_router(SurveyRouter, prefix="/survey", tags=["Survey"])
+app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
+
 #app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
 
 @app.get("/", tags=["Root"])
