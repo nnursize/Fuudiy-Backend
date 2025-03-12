@@ -42,6 +42,7 @@ async def retrieve_comments_for_food(food_id: str):
             "$project": {
                 "_id": 1,  # Comment ID
                 "comment": 1,
+                "rate": 1,
                 "foodId": "$food._id",
                 "foodName": "$food.name",
                 "userId": "$user._id",
