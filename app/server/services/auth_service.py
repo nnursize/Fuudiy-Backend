@@ -58,3 +58,12 @@ async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
     access_token = create_access_token(data={"user_id": user_id})
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+def is_user_logged_in(token: str = Depends(oauth2_scheme)) -> bool:
+    try:
+        # Verify the token and return the user ID if valid
+        verify_access_token(token)  # This function throws an error if the token is invalid
+        return True
+    except HTTPException:
+        return False
