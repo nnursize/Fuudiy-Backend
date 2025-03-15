@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.encoders import jsonable_encoder
+from ..services.auth_service import get_current_user
 from server.services.user_service import (
     add_user,
     delete_user,
@@ -29,12 +30,13 @@ async def get_all_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{id}", tags=["User"], response_description="Get a specific user by ID")
-async def get_user(id: str):
+@router.get("/{token}", tags=["User"], response_description="Get a specific user by ID")
+async def get_user(token: str):
     """
     Fetch a specific user by their ID.
     """
-    user = await retrieve_user(id)
+    user_id: str = Depends(get_current_user)
+    user = await retrieve_user(user_id)
     if user:
         return ResponseModel(user, f"User with ID {id} retrieved successfully.")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
