@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from server.services.auth_service import register_user, login_user
+from server.services.auth_service import register_user, login_user, get_current_user
 from server.models.auth import UserCreate, UserLogin, Token
 
 router = APIRouter()
@@ -16,3 +16,8 @@ async def register(user: UserCreate, db: AsyncIOMotorDatabase = Depends(get_db))
 @router.post("/login", response_model=Token, tags=["Auth"])
 async def login(user: UserLogin, db: AsyncIOMotorDatabase = Depends(get_db)):
     return await login_user(user, db)
+
+# New endpoint to get user ID from the token
+@router.post("/me", tags=["Auth"])
+async def get_me(user_id: str = Depends(get_current_user)):
+    return {"user_id": user_id}  
