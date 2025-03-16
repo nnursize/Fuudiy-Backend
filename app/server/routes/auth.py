@@ -17,7 +17,4 @@ async def register(user: UserCreate, db: AsyncIOMotorDatabase = Depends(get_db))
 async def login(user: UserLogin, db: AsyncIOMotorDatabase = Depends(get_db)):
     return await login_user(user, db)
 
-# New endpoint to get user ID from the token
-@router.post("/me", tags=["Auth"])
-async def get_me(user_id: str = Depends(get_current_user)):
-    return {"user_id": user_id}  
+
