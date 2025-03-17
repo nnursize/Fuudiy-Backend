@@ -41,6 +41,22 @@ async def get_user(token: str):
         return ResponseModel(user, f"User with ID {id} retrieved successfully.")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
+@router.post("/me", tags=["User"], response_description="Get authenticated user's info")
+async def get_current_user_info(user_id: str = Depends(get_current_user)):
+    """
+    Fetch the authenticated user's info using their token.
+    """
+    try:
+        # Retrieve user details using the user_id
+        user = await retrieve_user(user_id)
+        print("id: ",user_id)
+        if user:
+            return ResponseModel(user, f"User with ID {user_id} retrieved successfully.")
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid token or error retrieving user")
+    
 @router.post("/", tags=["User"], response_description="Add a new user to the database")
 async def add_user_data(user: UserSchema = Body(...)):
     """
