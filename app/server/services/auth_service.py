@@ -17,9 +17,10 @@ def verify_access_token(token: str):
     print("token",token)
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("payload",payload)
+        print("payload", payload)
         token_data = TokenData(**{"user_id": payload.get("user_id")})
         if token_data.user_id is None:
+            print("verify_access_token: Invalid token")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return token_data.user_id
     except JWTError:
