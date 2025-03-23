@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.encoders import jsonable_encoder
+from server.database import database
 from ..services.auth_service import get_current_user
 from server.services.user_service import (
     add_user,
@@ -16,6 +17,8 @@ from server.models.user import (
 )
 
 router = APIRouter() 
+user_collection = database.get_collection("users")
+
 
 @router.get("/", tags=["User"], response_description="Get all users")
 async def get_all_users():
@@ -113,3 +116,26 @@ async def delete_user_data(id: str):
     if deleted_user:
         return ResponseModel(f"User with ID {id} deleted successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
+
+@router.put("/update-avatar-by-username/{username}", tags=["User"], response_description="Update user avatar by username")
+async def update_avatar_by_username(username: str, req: dict = Body(...)):
+    """
+    Update the user's avatar using their username.
+    Expects: {"avatarId": "avatarName"}
+    """
+    if "avatarId" not in req:
+        raise HTTPException(status_code=400, detail="avatarId is required")
+
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    updated = await user_collection.update_one(
+        {"username": username},
+        {"$set": {"avatarId": req["avatarId"]}}
+    )
+    
+    if updated.modified_count > 0:
+        return ResponseModel(f"Avatar for user '{username}' updated successfully.", "Success")
+    
+    return ResponseModel(f"No change detected for user '{username}'.", "No Update")
