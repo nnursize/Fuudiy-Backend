@@ -3,6 +3,7 @@ from server.database import database
 from bson import ObjectId
 from server.services.food_service import food_helper
 from server.services.user_service import user_helper
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 comment_collection = database.get_collection("user_comments")
 
@@ -65,6 +66,7 @@ async def retrieve_comments_for_food(food_id: str):
 
 async def retrieve_comments_for_user(user_id: str):
     try:
+        # Convert user_id to ObjectId if necessary
         user_id_obj = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
 
         pipeline = [
@@ -77,12 +79,12 @@ async def retrieve_comments_for_user(user_id: str):
                     "as": "food"
                 }
             },
-            {"$unwind": {"path": "$food", "preserveNullAndEmptyArrays": True}},  # Allow missing foods
+            {"$unwind": {"path": "$food", "preserveNullAndEmptyArrays": True}},
             {
                 "$project": {
                     "_id": 1,
                     "comment": 1,
-                    "rate": 1,  # ✅ Ensure rate is included
+                    "rate": 1,
                     "foodId": "$food._id",
                     "foodName": "$food.name"
                 }
@@ -90,6 +92,7 @@ async def retrieve_comments_for_user(user_id: str):
         ]
 
         comments = await comment_collection.aggregate(pipeline).to_list(length=None)
+        print("services comment_service retrieve_comment_for_user comments: ", comments)
 
         for comment in comments:
             comment["_id"] = str(comment["_id"])

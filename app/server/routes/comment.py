@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from fastapi.encoders import jsonable_encoder
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from server.database import database
+from server.services.auth_service import get_current_user
 from server.services.comment_service import (
     add_comment,
     delete_comment,
@@ -17,6 +20,18 @@ from server.models.comment import (
 
 router = APIRouter()
 
+@router.get("/me", tags=["Comment"], response_model=list)
+async def get_my_comments(user_id: str = Depends(get_current_user)):
+    try:
+        # print("routes comment get_my_comments user_id: ", user_id)
+        comments = await retrieve_comments_for_user(user_id)
+        print("routes comment get_my_comments comments: ", comments)
+        if not comments:
+            raise HTTPException(status_code=404, detail="No comments found.")
+
+        return comments
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{food_id}", tags=["Comment"], response_model=list)
 async def get_comments(food_id: str):
