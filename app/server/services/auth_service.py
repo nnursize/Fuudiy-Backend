@@ -67,4 +67,5 @@ def is_user_logged_in(token: str = Depends(oauth2_scheme)) -> bool:
         verify_access_token(token)  # This function throws an error if the token is invalid
         return True
     except HTTPException:
+        
         return False

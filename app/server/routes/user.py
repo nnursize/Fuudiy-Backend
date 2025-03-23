@@ -5,6 +5,7 @@ from server.services.user_service import (
     add_user,
     delete_user,
     retrieve_user,
+    retrieve_current_user,
     retrieve_users,
     update_user,
 )
@@ -30,13 +31,13 @@ async def get_all_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{token}", tags=["User"], response_description="Get a specific user by ID")
-async def get_user(token: str):
+@router.get("/{username}", tags=["User"], response_description="Get a specific user by ID")
+async def get_user(username: str):
     """
     Fetch a specific user by their ID.
     """
-    user_id: str = Depends(get_current_user)
-    user = await retrieve_user(user_id)
+    #user_id: str = Depends(get_current_user)
+    user = await retrieve_user(username)
     if user:
         return ResponseModel(user, f"User with ID {id} retrieved successfully.")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
@@ -48,8 +49,9 @@ async def get_current_user_info(user_id: str = Depends(get_current_user)):
     """
     try:
         # Retrieve user details using the user_id
-        user = await retrieve_user(user_id)
+        user = await retrieve_current_user(user_id)
         print("id: ",user_id)
+        print(user)
         if user:
             return ResponseModel(user, f"User with ID {user_id} retrieved successfully.")
         else:
