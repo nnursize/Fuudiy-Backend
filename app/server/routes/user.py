@@ -18,7 +18,7 @@ from server.models.user import (
 
 router = APIRouter() 
 user_collection = database.get_collection("users")
-
+survey_collection = database.get_collection("surveys")
 
 @router.get("/", tags=["User"], response_description="Get all users")
 async def get_all_users():
@@ -43,21 +43,26 @@ async def get_user(id: str):
         return ResponseModel(user, f"User with ID {id} retrieved successfully.")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
-@router.post("/me", tags=["User"], response_description="Get authenticated user's info")
+@router.post("/me", tags=["User"], response_description="Get authenticated user's info and preferences")
 async def get_current_user_info(user_id: str = Depends(get_current_user)):
-    """
-    Fetch the authenticated user's info using their token.
-    """
     try:
-        # Retrieve user details using the user_id
         user = await retrieve_user(user_id)
-        print("id: ",user_id)
-        if user:
-            return ResponseModel(user, f"User with ID {user_id} retrieved successfully.")
-        else:
+        survey = await survey_collection.find_one({"user_id": user_id})
+
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
+
+        responses = survey.get("responses", {}) if survey else {}
+
+        return ResponseModel(
+            {
+                **user,
+                **responses  # Merges dislikedIngredients, etc.
+            },
+            f"User with ID {user_id} and preferences retrieved successfully."
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid token or error retrieving user")
+        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
     
 @router.post("/", tags=["User"], response_description="Add a new user to the database")
 async def add_user_data(user: UserSchema = Body(...)):
@@ -139,3 +144,14 @@ async def update_avatar_by_username(username: str, req: dict = Body(...)):
         return ResponseModel(f"Avatar for user '{username}' updated successfully.", "Success")
     
     return ResponseModel(f"No change detected for user '{username}'.", "No Update")
+
+@router.get("/preferences/{user_id}", tags=["User"], response_description="Get user food preferences")
+async def get_user_preferences(user_id: str):
+    """
+    Fetch food preferences from the survey for a given user.
+    """
+    survey = await survey_collection.find_one({"user_id": user_id})
+    print("routes user get_user_preferences survey: ", survey)
+    if not survey or "responses" not in survey:
+        raise HTTPException(status_code=404, detail="Survey data not found for user")
+    return ResponseModel(survey["responses"], "Survey preferences retrieved.")
