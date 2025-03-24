@@ -32,7 +32,7 @@ PydanticObjectId = Annotated[
 ]
 
 class CommentSchema(BaseModel):
-    user_id: PydanticObjectId = Field(..., alias="userId")
+    user_id: Optional[PydanticObjectId] = Field(..., alias="userId")
     food_id: PydanticObjectId = Field(..., alias="foodId")
     rate: Optional[int] = Field(..., ge=1, le=5)  # Ensure rate is between 1 and 5
     comment: Optional[str] = Field(None)
