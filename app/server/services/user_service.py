@@ -12,9 +12,6 @@ def user_helper(user) -> dict:
         "password": user["password"],
         "bio": user.get("bio", ""),
         "avatarId": user.get("avatarId", ""),
-        "likedIngredients": user.get("likedIngredients", []),
-        "dislikedIngredients": user.get("dislikedIngredients", []),
-        "preferences": user.get("preferences", {}),
     }
 
 
