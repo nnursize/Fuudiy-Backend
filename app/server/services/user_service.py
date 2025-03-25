@@ -30,13 +30,18 @@ async def retrieve_users():
     return users
 
 
-async def retrieve_user(id: str) -> dict:
+async def retrieve_current_user(id: str) -> dict:
     try:
         object_id = ObjectId(id)  # Convert string to ObjectId
     except:
         return None  # Handle invalid ObjectId gracefully
 
     user = await user_collection.find_one({"_id": object_id})
+    if user:
+        return user_helper(user)
+    
+async def retrieve_user(username: str) -> dict:
+    user = await user_collection.find_one({"username": username})
     if user:
         return user_helper(user)
 
