@@ -2,6 +2,9 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
+class DislikedIngredientsUpdateModel(BaseModel):
+    dislikedIngredients: List[str]
+
 class UserSchema(BaseModel):
     username: str
     email: str
