@@ -188,3 +188,26 @@ async def get_user_preferences(user_id: str):
     if not survey or "responses" not in survey:
         raise HTTPException(status_code=404, detail="Survey data not found for user")
     return ResponseModel(survey["responses"], "Survey preferences retrieved.")
+
+@router.put("/update-bio-by-username/{username}", tags=["User"], response_description="Update user bio by username")
+async def update_bio_by_username(username: str, req: dict = Body(...)):
+    """
+    Update the user's bio using their username.
+    Expects: {"bio": "This is my new bio"}
+    """
+    if "bio" not in req:
+        raise HTTPException(status_code=400, detail="bio is required")
+
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    updated = await user_collection.update_one(
+        {"username": username},
+        {"$set": {"bio": req["bio"]}}
+    )
+
+    if updated.modified_count > 0:
+        return ResponseModel(f"Bio for user '{username}' updated successfully.", "Success")
+
+    return ResponseModel(f"No change detected for user '{username}'.", "No Update")
