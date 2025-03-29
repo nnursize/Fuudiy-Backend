@@ -1,14 +1,17 @@
 from fastapi import APIRouter, Body, HTTPException, Depends
 from fastapi.encoders import jsonable_encoder
+from server.database import database
 from ..services.auth_service import get_current_user
 from server.services.user_service import (
     add_user,
     delete_user,
     retrieve_user,
+    retrieve_current_user,
     retrieve_users,
     update_user,
 )
 from server.models.user import (
+    DislikedIngredientsUpdateModel,
     ErrorResponseModel,
     ResponseModel,
     UserSchema,
@@ -16,6 +19,8 @@ from server.models.user import (
 )
 
 router = APIRouter() 
+user_collection = database.get_collection("users")
+survey_collection = database.get_collection("surveys")
 
 @router.get("/", tags=["User"], response_description="Get all users")
 async def get_all_users():
@@ -30,31 +35,37 @@ async def get_all_users():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{id}", tags=["User"], response_description="Get a specific user by ID")
-async def get_user(id: str):
+@router.get("/{username}", tags=["User"], response_description="Get a specific user by ID")
+async def get_user(username: str):
     """
     Fetch a specific user by their ID.
     """
-    user = await retrieve_user(id)
+    #user_id: str = Depends(get_current_user)
+    user = await retrieve_user(username)
     if user:
         return ResponseModel(user, f"User with ID {id} retrieved successfully.")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
-@router.post("/me", tags=["User"], response_description="Get authenticated user's info")
+@router.post("/me", tags=["User"], response_description="Get authenticated user's info and preferences")
 async def get_current_user_info(user_id: str = Depends(get_current_user)):
-    """
-    Fetch the authenticated user's info using their token.
-    """
     try:
-        # Retrieve user details using the user_id
         user = await retrieve_user(user_id)
-        print("id: ",user_id)
-        if user:
-            return ResponseModel(user, f"User with ID {user_id} retrieved successfully.")
-        else:
+        survey = await survey_collection.find_one({"user_id": user_id})
+
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
+
+        responses = survey.get("responses", {}) if survey else {}
+
+        return ResponseModel(
+            {
+                **user,
+                **responses  # Merges dislikedIngredients, etc.
+            },
+            f"User with ID {user_id} and preferences retrieved successfully."
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid token or error retrieving user")
+        raise HTTPException(status_code=400, detail=f"Error: {str(e)}")
     
 @router.post("/", tags=["User"], response_description="Add a new user to the database")
 async def add_user_data(user: UserSchema = Body(...)):
@@ -90,18 +101,50 @@ async def update_user_avatar(id: str, req: dict = Body(...)):
         return ResponseModel(f"User with ID {id} avatar updated successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
 
-@router.put("/update-disliked/{id}", tags=["User"], response_description="Update user disliked ingredients by ID")
-async def update_user_disliked(id: str, req: dict = Body(...)):
+@router.put("/update-disliked", tags=["User"], response_description="Update disliked ingredients using token")
+async def update_user_disliked(
+    req: DislikedIngredientsUpdateModel,
+    user_id: str = Depends(get_current_user)
+):
     """
-    Update the user's disliked ingredients.
-    Expects a JSON payload like: {"dislikedIngredients": ["ingredient1", "ingredient2"]}
+    Update the user's disliked ingredients using the token.
     """
-    if "dislikedIngredients" not in req:
-        raise HTTPException(status_code=400, detail="dislikedIngredients is required")
-    updated = await update_user(id, {"dislikedIngredients": req["dislikedIngredients"]})
+    disliked_str = ", ".join(req.dislikedIngredients)
+
+    updated = await update_user(user_id, {"disliked_ingredients": disliked_str})
     if updated:
-        return ResponseModel(f"User with ID {id} disliked ingredients updated successfully.", "Success")
-    raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
+        return ResponseModel(f"User with ID {user_id} disliked ingredients updated successfully.", "Success")
+    
+    raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
+
+@router.put("/update-disliked-by-username/{username}", tags=["User"], response_description="Update disliked ingredients by username")
+async def update_disliked_by_username(
+    username: str,
+    req: DislikedIngredientsUpdateModel = Body(...)
+):
+    """
+    Update the user's disliked ingredients in the 'surveys' collection using their username.
+    Expects: {"dislikedIngredients": ["Onion", "Tomato"]}
+    """
+    disliked_str = ", ".join(req.dislikedIngredients)
+
+    # Get user
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    user_id = str(user["_id"])
+
+    # Update disliked_ingredients in surveys collection
+    result = await survey_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"responses.disliked_ingredients": disliked_str}}
+    )
+
+    if result.modified_count == 0:
+        return ResponseModel(f"No change detected for user '{username}'", "No Update")
+
+    return ResponseModel(f"User '{username}' disliked ingredients updated in surveys.", "Success")
 
 
 @router.delete("/{id}", tags=["User"], response_description="Delete a user by ID")
@@ -113,3 +156,60 @@ async def delete_user_data(id: str):
     if deleted_user:
         return ResponseModel(f"User with ID {id} deleted successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"User with ID {id} not found")
+
+@router.put("/update-avatar-by-username/{username}", tags=["User"], response_description="Update user avatar by username")
+async def update_avatar_by_username(username: str, req: dict = Body(...)):
+    """
+    Update the user's avatar using their username.
+    Expects: {"avatarId": "avatarName"}
+    """
+    if "avatarId" not in req:
+        raise HTTPException(status_code=400, detail="avatarId is required")
+
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    updated = await user_collection.update_one(
+        {"username": username},
+        {"$set": {"avatarId": req["avatarId"]}}
+    )
+    
+    if updated.modified_count > 0:
+        return ResponseModel(f"Avatar for user '{username}' updated successfully.", "Success")
+    
+    return ResponseModel(f"No change detected for user '{username}'.", "No Update")
+
+@router.get("/preferences/{user_id}", tags=["User"], response_description="Get user food preferences")
+async def get_user_preferences(user_id: str):
+    """
+    Fetch food preferences from the survey for a given user.
+    """
+    survey = await survey_collection.find_one({"user_id": user_id})
+    print("routes user get_user_preferences survey: ", survey)
+    if not survey or "responses" not in survey:
+        raise HTTPException(status_code=404, detail="Survey data not found for user")
+    return ResponseModel(survey["responses"], "Survey preferences retrieved.")
+
+@router.put("/update-bio-by-username/{username}", tags=["User"], response_description="Update user bio by username")
+async def update_bio_by_username(username: str, req: dict = Body(...)):
+    """
+    Update the user's bio using their username.
+    Expects: {"bio": "This is my new bio"}
+    """
+    if "bio" not in req:
+        raise HTTPException(status_code=400, detail="bio is required")
+
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    updated = await user_collection.update_one(
+        {"username": username},
+        {"$set": {"bio": req["bio"]}}
+    )
+
+    if updated.modified_count > 0:
+        return ResponseModel(f"Bio for user '{username}' updated successfully.", "Success")
+
+    return ResponseModel(f"No change detected for user '{username}'.", "No Update")

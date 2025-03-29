@@ -46,9 +46,8 @@ async def retrieve_comments_for_food(food_id: str):
                 "rate": 1,
                 "foodId": "$food._id",
                 "foodName": "$food.name",
-                "userId": "$user._id",
                 "userName": "$user.username",
-                "userAvatar": "$user.avatar",
+                "userAvatar": "$user.avatarId",
             }
         }
     ]
@@ -59,7 +58,6 @@ async def retrieve_comments_for_food(food_id: str):
     for comment in comments:
         comment["_id"] = str(comment["_id"])
         comment["foodId"] = str(comment["foodId"])
-        comment["userId"] = str(comment["userId"])
 
     return comments
 

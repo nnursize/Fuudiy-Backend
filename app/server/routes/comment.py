@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Depends
 from fastapi.encoders import jsonable_encoder
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from server.database import database
+from bson import ObjectId
 from server.services.auth_service import get_current_user
 from server.services.comment_service import (
     add_comment,
@@ -39,11 +40,9 @@ async def get_comments(food_id: str):
         comments = await retrieve_comments_for_food(food_id)
         if not comments:
             raise HTTPException(status_code=404, detail="No comments found.")
-        #print(comments)
         # Convert ObjectId fields to strings if they still exist
         for comment in comments:
             comment["_id"] = str(comment["_id"])
-            comment["userId"] = str(comment["userId"])
         
         return comments
     except Exception as e:
@@ -61,10 +60,16 @@ async def get_comments_for_user(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/", tags=["Comment"], response_description="Comment added to the database")
-async def add_comment_data(comment: CommentSchema = Body(...)):
-    comment = jsonable_encoder(comment)
-    print(comment)
-    new_comment = await add_comment(comment)
+async def add_comment_data(
+    comment: CommentSchema = Body(...),
+    current_user: str = Depends(get_current_user)
+):
+    print("CURRENNNTTT USEEER  ",current_user)
+    # current_user should now be the actual user id (as a valid string) extracted from the token.
+    comment.user_id = ObjectId(current_user)
+    comment_data = jsonable_encoder(comment)
+    print(comment_data)
+    new_comment = await add_comment(comment_data)
     return ResponseModel(new_comment, "Comment added successfully.")
 
 
@@ -90,14 +95,18 @@ async def update_user_comment(id: str, req: UpdateCommentModel = Body(...)):
         return ResponseModel(f"Comment with ID {id} updated successfully.", "Success")
     raise HTTPException(status_code=404, detail=f"Comment with ID {id} not found")
 
-@router.put("/update-rate/{user_id}/{food_id}", tags=["Comment"], response_description="Update the rate of a comment")
-async def update_comment_rate(user_id: str, food_id: str, rate: int = Query(..., ge=1, le=5)):
+@router.put("/update-rate/{food_id}", tags=["Comment"], response_description="Update the rate of a comment")
+async def update_comment_rate_with_token(
+    food_id: str,
+    rate: int = Query(..., ge=1, le=5),
+    user_id: str = Depends(get_current_user)  # This extracts user_id from token
+):
     """
-    Updates the rating of a comment based on userId and foodId.
-    The rate must be between 1 and 5.
+    Updates the rating of a comment based on the token-authenticated user and foodId.
     """
     if await update_rate_for_comment(user_id, food_id, rate):
         return {"message": f"Rate updated successfully for user {user_id} on food {food_id}."}
     raise HTTPException(status_code=404, detail="Comment not found")
+
 
 
