@@ -213,3 +213,24 @@ async def update_bio_by_username(username: str, req: dict = Body(...)):
         return ResponseModel(f"Bio for user '{username}' updated successfully.", "Success")
 
     return ResponseModel(f"No change detected for user '{username}'.", "No Update")
+
+@router.get("/allergies/{username}", tags=["User"], response_description="Get user allergies by username")
+async def get_user_allergies_by_username(username: str):
+    """
+    Fetch allergy information from the survey collection for a user by username.
+    """
+    # Find user by username
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    user_id = str(user["_id"])
+
+    # Find survey responses for this user
+    survey = await survey_collection.find_one({"user_id": user_id})
+    if not survey or "responses" not in survey:
+        raise HTTPException(status_code=404, detail=f"No survey data found for user '{username}'")
+
+    allergies = survey["responses"].get("allergies", [])
+    return ResponseModel(allergies, f"Allergies for user '{username}' retrieved successfully.")
+
