@@ -99,7 +99,6 @@ async def retrieve_comments_for_user_name(user_name: str):
         ]
 
         comments = await comment_collection.aggregate(pipeline).to_list(length=None)
-        print("services comment_service retrieve_comment_for_user comments: ", comments)
 
         for comment in comments:
             comment["_id"] = str(comment["_id"])
@@ -153,7 +152,13 @@ async def retrieve_comments_for_user_id(user_id: str):
 
 # Add a new comment
 async def add_comment(comment_data: dict) -> dict:
-    # Convert userId & foodId to ObjectId before inserting into MongoDB
+    # Normalize key names to match the expected schema
+    if "user_id" in comment_data:
+        comment_data["userId"] = comment_data.pop("user_id")
+    if "food_id" in comment_data:
+        comment_data["foodId"] = comment_data.pop("food_id")
+    
+    # Convert userId and foodId to ObjectId if they are strings
     comment_data["userId"] = ObjectId(comment_data["userId"]) if isinstance(comment_data["userId"], str) else comment_data["userId"]
     comment_data["foodId"] = ObjectId(comment_data["foodId"]) if isinstance(comment_data["foodId"], str) else comment_data["foodId"]
 
@@ -162,6 +167,7 @@ async def add_comment(comment_data: dict) -> dict:
     new_comment = await comment_collection.find_one({"_id": comment.inserted_id})
     
     return comment_helper(new_comment)
+
 
 
 
