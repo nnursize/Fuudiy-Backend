@@ -61,8 +61,56 @@ async def retrieve_comments_for_food(food_id: str):
 
     return comments
 
+async def retrieve_comments_for_user_name(user_name: str):
+    try:
+        pipeline = [
+            # Join with the users collection to get user details
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "userId",
+                    "foreignField": "_id",
+                    "as": "user"
+                }
+            },
+            {"$unwind": "$user"},
+            # Now match on the username from the joined user document
+            {"$match": {"user.username": user_name}},
+            # Join with the foods collection to get food details
+            {
+                "$lookup": {
+                    "from": "foods",
+                    "localField": "foodId",
+                    "foreignField": "_id",
+                    "as": "food"
+                }
+            },
+            {"$unwind": {"path": "$food", "preserveNullAndEmptyArrays": True}},
+            # Project the desired fields
+            {
+                "$project": {
+                    "_id": 1,
+                    "comment": 1,
+                    "rate": 1,
+                    "foodId": "$food._id",
+                    "foodName": "$food.name"
+                }
+            }
+        ]
 
-async def retrieve_comments_for_user(user_id: str):
+        comments = await comment_collection.aggregate(pipeline).to_list(length=None)
+
+        for comment in comments:
+            comment["_id"] = str(comment["_id"])
+            comment["foodId"] = str(comment["foodId"]) if "foodId" in comment and comment["foodId"] is not None else None
+
+        return comments
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def retrieve_comments_for_user_id(user_id: str):
     try:
         # Convert user_id to ObjectId if necessary
         user_id_obj = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
@@ -104,7 +152,13 @@ async def retrieve_comments_for_user(user_id: str):
 
 # Add a new comment
 async def add_comment(comment_data: dict) -> dict:
-    # Convert userId & foodId to ObjectId before inserting into MongoDB
+    # Normalize key names to match the expected schema
+    if "user_id" in comment_data:
+        comment_data["userId"] = comment_data.pop("user_id")
+    if "food_id" in comment_data:
+        comment_data["foodId"] = comment_data.pop("food_id")
+    
+    # Convert userId and foodId to ObjectId if they are strings
     comment_data["userId"] = ObjectId(comment_data["userId"]) if isinstance(comment_data["userId"], str) else comment_data["userId"]
     comment_data["foodId"] = ObjectId(comment_data["foodId"]) if isinstance(comment_data["foodId"], str) else comment_data["foodId"]
 
@@ -113,6 +167,7 @@ async def add_comment(comment_data: dict) -> dict:
     new_comment = await comment_collection.find_one({"_id": comment.inserted_id})
     
     return comment_helper(new_comment)
+
 
 
 
