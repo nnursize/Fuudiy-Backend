@@ -1,6 +1,8 @@
 from pyspark.sql import SparkSession
 from config import MONGO_URI
-
+#python_path = r"C:\\Users\\USER\\Desktop\\Fuudiy\\Fuudiy-Backend\\fenv\Scripts\\python.exe"
+#os.environ['PYSPARK_PYTHON'] = python_path
+#os.environ['PYSPARK_DRIVER_PYTHON'] = python_path
 def get_spark_session():
     """Create and return a Spark session configured for MongoDB."""
     spark = SparkSession.builder \

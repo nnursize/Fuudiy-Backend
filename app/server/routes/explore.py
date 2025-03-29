@@ -76,30 +76,30 @@ spark.udf.register("get_idf", lambda idx: bc_idf_weights.value.get(idx, 0.0))
 @router.get("/recommend/")
 async def recommend_foods(country: str = Query(..., title="Target country"), user_id: str = Depends(get_current_user), top_n: int = 10):
     print(f"Received country: {country}, user_id: {user_id}")  # Debugging
-    print("11111111111111111111")
+    #print("11111111111111111111")
     try:
         # 1. Validate country exists
         country_count = food_df.filter(F.col("country") == country).count()
         if country_count == 0:
             raise HTTPException(400, detail=f"No foods available in {country}")
-        print("22222222222222222")
+        #print("22222222222222222")
         # 2. Validate user survey
         user_surveys = survey_df.filter(F.col("user_id") == user_id).take(1)
-        print(user_surveys)
-        print("aaaaaaaaaaaaaaaaaaaa")
-        print(user_surveys[0])
+        #print(user_surveys)
+        #print("aaaaaaaaaaaaaaaaaaaa")
+        #print(user_surveys[0])
         survey_data = user_surveys[0].asDict()
-        print(survey_data)
+        #print(survey_data)
 
-        print("33333333333333")
+        #print("33333333333333")
         # Get nested responses (handle Row/None cases)
         prefs = survey_data.get("responses", {})
-        print(prefs)
+        #print(prefs)
         if isinstance(prefs, Row):  # If responses is stored as Row
             prefs = prefs.asDict()
           #  print("33333333333333")
-        print("444444444444444444prefsdict44444")
-        print(prefs)
+        #print("444444444444444444prefsdict44444")
+        #print(prefs)
         # Unified preference parser
         def parse_prefs(value):
             if isinstance(value, str):
@@ -129,7 +129,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
                 country_foods = country_foods.filter(~F.array_contains(F.col("ingredients"), allergen))
         else:
             print("No disliked ingredients to filter")
-        print("5555555555555555531")
+        #print("5555555555555555531")
         # 5. Calculate TF-IDF scores
         # Convert sparse vectors to arrays
         country_foods = country_foods.withColumn(
@@ -160,7 +160,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
                 "score"
             )
         )
-        print(recommendations.show(5))
+        #print(recommendations.show(5))
         print("Successfully generated recommendations")
         return recommendations.toJSON().collect()
 
@@ -175,7 +175,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
 @router.get("/countries")
 async def get_available_countries():
     """Get distinct available countries from food data"""
-    print("22222222222222222222222")
+    #print("22222222222222222222222")
     try:
         # Get distinct countries from precomputed DataFrame
         countries = food_df.select("country").distinct()
