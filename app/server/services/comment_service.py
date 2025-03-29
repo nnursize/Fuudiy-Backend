@@ -61,8 +61,57 @@ async def retrieve_comments_for_food(food_id: str):
 
     return comments
 
+async def retrieve_comments_for_user_name(user_name: str):
+    try:
+        pipeline = [
+            # Join with the users collection to get user details
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "userId",
+                    "foreignField": "_id",
+                    "as": "user"
+                }
+            },
+            {"$unwind": "$user"},
+            # Now match on the username from the joined user document
+            {"$match": {"user.username": user_name}},
+            # Join with the foods collection to get food details
+            {
+                "$lookup": {
+                    "from": "foods",
+                    "localField": "foodId",
+                    "foreignField": "_id",
+                    "as": "food"
+                }
+            },
+            {"$unwind": {"path": "$food", "preserveNullAndEmptyArrays": True}},
+            # Project the desired fields
+            {
+                "$project": {
+                    "_id": 1,
+                    "comment": 1,
+                    "rate": 1,
+                    "foodId": "$food._id",
+                    "foodName": "$food.name"
+                }
+            }
+        ]
 
-async def retrieve_comments_for_user(user_id: str):
+        comments = await comment_collection.aggregate(pipeline).to_list(length=None)
+        print("services comment_service retrieve_comment_for_user comments: ", comments)
+
+        for comment in comments:
+            comment["_id"] = str(comment["_id"])
+            comment["foodId"] = str(comment["foodId"]) if "foodId" in comment and comment["foodId"] is not None else None
+
+        return comments
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def retrieve_comments_for_user_id(user_id: str):
     try:
         # Convert user_id to ObjectId if necessary
         user_id_obj = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
