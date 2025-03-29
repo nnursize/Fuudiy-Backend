@@ -7,6 +7,9 @@ from server.routes.auth import router as AuthRouter
 from server.routes.survey import router as SurveyRouter
 from server.routes.translation import router as TranslationRouter
 from server.database import database
+from server.routes.explore import router as ExploreRouter
+
+#from server.routes.similarity_explore import
 
 #from server.routes.translation import router as TranslationRouter
 import uvicorn
@@ -28,6 +31,7 @@ app.include_router(UserCommentsRouter, prefix="/comments", tags=["Comment"])
 app.include_router(AuthRouter, prefix="/auth", tags=["Auth"])
 app.include_router(SurveyRouter, prefix="/survey", tags=["Survey"])
 app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
+app.include_router(ExploreRouter, prefix="/explore", tags=["Explore"])
 
 #app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
 
@@ -36,7 +40,11 @@ async def read_root():
     return {"message": "Welcome to this fantastic app!"}
 
 app.state.database = database
-
+@app.on_event("shutdown")
+def shutdown_event():
+    spark.stop()  # Properly stop Spark session
+    print("Spark session stopped")
+    
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
 
