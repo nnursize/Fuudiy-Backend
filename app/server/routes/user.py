@@ -256,3 +256,30 @@ async def update_allergies_by_username(username: str, req: AllergiesUpdateModel 
         return ResponseModel(f"No change detected for allergies of user '{username}'", "No Update")
 
     return ResponseModel(f"Allergies for user '{username}' updated in surveys.", "Success")
+
+
+@router.put("/update-disliked-by-username/{username}", tags=["User"], response_description="Update disliked ingredients by username")
+async def update_disliked_by_username(username: str, req: DislikedIngredientsUpdateModel = Body(...)):
+    """
+    Update the user's disliked ingredients in the 'surveys' collection using their username.
+    Expects: {"dislikedIngredients": ["Onion", "Tomato"]}
+    """
+    disliked_str = ", ".join(req.dislikedIngredients)
+
+    # Get user
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+
+    user_id = str(user["_id"])
+
+    # Update disliked_ingredients in surveys collection
+    result = await survey_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"responses.disliked_ingredients": disliked_str}}
+    )
+
+    if result.modified_count == 0:
+        return ResponseModel(f"No change detected for user '{username}'", "No Update")
+
+    return ResponseModel(f"User '{username}' disliked ingredients updated in surveys.", "Success")
