@@ -12,6 +12,7 @@ from server.services.user_service import (
 )
 from server.models.user import (
     DislikedIngredientsUpdateModel,
+    AllergiesUpdateModel,
     ErrorResponseModel,
     ResponseModel,
     UserSchema,
@@ -234,3 +235,24 @@ async def get_user_allergies_by_username(username: str):
     allergies = survey["responses"].get("allergies", [])
     return ResponseModel(allergies, f"Allergies for user '{username}' retrieved successfully.")
 
+@router.put("/update-allergies-by-username/{username}", tags=["User"], response_description="Update allergies by username")
+async def update_allergies_by_username(username: str, req: AllergiesUpdateModel = Body(...)):
+    """
+    Update the user's allergy list in the 'surveys' collection using their username.
+    Expects: {"allergies": ["eggs", "dairy"]}
+    """
+    user = await user_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
+    
+    user_id = str(user["_id"])
+
+    result = await survey_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"responses.allergies": req.allergies}}
+    )
+
+    if result.modified_count == 0:
+        return ResponseModel(f"No change detected for allergies of user '{username}'", "No Update")
+
+    return ResponseModel(f"Allergies for user '{username}' updated in surveys.", "Success")
