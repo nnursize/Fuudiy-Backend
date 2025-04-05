@@ -17,6 +17,16 @@ class UserCreate(BaseModel):
     email: EmailStr
     username: constr(min_length=3, max_length=20)
     password: str
+    is_google_user: bool = False  # Add this field
+
+class UserInDB(BaseModel):
+    email: str
+    username: str
+    hashed_password: str
+    is_google_user: bool = False
+    google_id: Optional[str] = None
+    name: Optional[str] = None
+    picture: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
