@@ -5,7 +5,7 @@ from server.models.auth import get_password_hash, verify_password, create_access
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from config import SECRET_KEY
-
+from bson import ObjectId
 ALGORITHM = "HS256"
 
 print("SECRET_KEY:", SECRET_KEY)
@@ -29,10 +29,18 @@ def verify_access_token(token: str):
 def get_current_user(token: str = Depends(oauth2_scheme)):
     return verify_access_token(token)
 
-
 async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
-    existing_user = await db.users.find_one({"email": user.email})
+    # Check if username already exists
+    existing_user = await db.users.find_one({"username": user.username})
     if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered"
+        )
+    
+    # Check if email already exists
+    existing_email = await db.users.find_one({"email": user.email})
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
@@ -45,6 +53,13 @@ async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
     access_token = create_access_token(data={"user_id": user_id})
     print("id: ",user_id)
     print("access_token ",access_token)
+    return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Create access token
+    access_token = create_access_token(
+        data={"user_id": str(result.inserted_id)}
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
@@ -69,3 +84,4 @@ def is_user_logged_in(token: str = Depends(oauth2_scheme)) -> bool:
     except HTTPException:
         
         return False
+

@@ -17,6 +17,8 @@ async def get_db(request: Request) -> AsyncIOMotorDatabase:
 async def register(user: UserCreate, db: AsyncIOMotorDatabase = Depends(get_db)):
     return await register_user(user, db)
 
+
+
 @router.post("/login", response_model=Token, tags=["Auth"])
 async def login(user: UserLogin, db: AsyncIOMotorDatabase = Depends(get_db)):
     return await login_user(user, db)

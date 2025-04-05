@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, constr
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt
@@ -15,7 +15,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Pydantic models
 class UserCreate(BaseModel):
     email: EmailStr
-    username: str
+    username: constr(min_length=3, max_length=20)
     password: str
 
 class UserLogin(BaseModel):
