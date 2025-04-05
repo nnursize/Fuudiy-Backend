@@ -85,3 +85,43 @@ def is_user_logged_in(token: str = Depends(oauth2_scheme)) -> bool:
         
         return False
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from config import CLIENT_ID  # Make sure to add this to your config
+
+async def authenticate_google_user(token: str, db: AsyncIOMotorDatabase):
+    try:
+        # Verify the Google ID token
+        idinfo = id_token.verify_oauth2_token(
+            token, 
+            google_requests.Request(),
+            CLIENT_ID
+        )
+        
+        # Check if user already exists
+        user = await db.users.find_one({"email": idinfo["email"]})
+        
+        if not user:
+            # Create new user
+            user_data = {
+                "email": idinfo["email"],
+                "username": idinfo["email"].split("@")[0],  # Or use name from idinfo
+                "password": "",  # No password for Google users
+                "google_id": idinfo["sub"],
+                "name": idinfo.get("name", ""),
+                "picture": idinfo.get("picture", "")
+            }
+            result = await db.users.insert_one(user_data)
+            user_id = str(result.inserted_id)
+        else:
+            user_id = str(user["_id"])
+        
+        # Create our JWT token
+        access_token = create_access_token(data={"user_id": user_id})
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid Google token")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

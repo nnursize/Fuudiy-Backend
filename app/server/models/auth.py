@@ -28,7 +28,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None
-
+    
+class GoogleToken(BaseModel):
+    token: str
 # Utility functions
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
