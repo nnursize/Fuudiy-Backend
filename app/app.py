@@ -8,7 +8,7 @@ from server.routes.survey import router as SurveyRouter
 from server.routes.translation import router as TranslationRouter
 from server.database import database
 from server.routes.explore import router as ExploreRouter
-
+from spark_utils import spark
 #from server.routes.similarity_explore import
 
 #from server.routes.translation import router as TranslationRouter
