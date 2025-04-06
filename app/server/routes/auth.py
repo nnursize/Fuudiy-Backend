@@ -68,10 +68,10 @@ from server.services.auth_service import authenticate_google_user
 
 @router.post("/google-login", response_model=Token, tags=["Auth"])
 async def google_login(google_token: GoogleToken, db: AsyncIOMotorDatabase = Depends(get_db)):
-    return await authenticate_google_user(google_token.token, db)
+    return await authenticate_google_user(google_token.token, db, 0)
 
 # Add to your auth_router.py
 @router.post("/google-register", response_model=Token, tags=["Auth"])
 async def google_register(google_token: GoogleToken, db: AsyncIOMotorDatabase = Depends(get_db)):
-    return await authenticate_google_user(google_token.token, db)
+    return await authenticate_google_user(google_token.token, db, 1)
     
