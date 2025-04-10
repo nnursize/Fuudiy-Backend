@@ -1,7 +1,7 @@
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Request, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from server.services.auth_service import register_user, login_user, get_current_user
+from server.services.auth_service import create_access_token,register_user, login_user, get_current_user,verify_access_token,oauth2_scheme
 from server.models.auth import UserCreate, UserLogin, Token
 from server.database import database
 
@@ -16,6 +16,8 @@ async def get_db(request: Request) -> AsyncIOMotorDatabase:
 @router.post("/register", response_model=Token, tags=["Auth"])
 async def register(user: UserCreate, db: AsyncIOMotorDatabase = Depends(get_db)):
     return await register_user(user, db)
+
+
 
 @router.post("/login", response_model=Token, tags=["Auth"])
 async def login(user: UserLogin, db: AsyncIOMotorDatabase = Depends(get_db)):
@@ -51,3 +53,25 @@ async def get_current_user_data(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error retrieving user: {str(e)}")
 
+@router.post("/refresh", response_model=Token, tags=["Auth"])
+async def refresh_token(token: str = Depends(oauth2_scheme)):
+    """ Verify token and issue a new one if valid """
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    new_token = create_access_token(data={"user_id": user_id})
+    return {"access_token": new_token, "token_type": "bearer"}
+from fastapi import Request
+from server.models.auth import GoogleToken
+from server.services.auth_service import authenticate_google_user
+
+@router.post("/google-login", response_model=Token, tags=["Auth"])
+async def google_login(google_token: GoogleToken, db: AsyncIOMotorDatabase = Depends(get_db)):
+    return await authenticate_google_user(google_token.token, db, 0)
+
+# Add to your auth_router.py
+@router.post("/google-register", response_model=Token, tags=["Auth"])
+async def google_register(google_token: GoogleToken, db: AsyncIOMotorDatabase = Depends(get_db)):
+    return await authenticate_google_user(google_token.token, db, 1)
+    

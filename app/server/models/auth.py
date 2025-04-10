@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, constr
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt
@@ -15,8 +15,18 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Pydantic models
 class UserCreate(BaseModel):
     email: EmailStr
-    username: str
+    username: constr(min_length=3, max_length=20)
     password: str
+    is_google_user: bool = False  # Add this field
+
+class UserInDB(BaseModel):
+    email: str
+    username: str
+    hashed_password: str
+    is_google_user: bool = False
+    google_id: Optional[str] = None
+    name: Optional[str] = None
+    picture: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -28,7 +38,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: Optional[str] = None
-
+    
+class GoogleToken(BaseModel):
+    token: str
 # Utility functions
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)

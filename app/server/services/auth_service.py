@@ -5,7 +5,10 @@ from server.models.auth import get_password_hash, verify_password, create_access
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from config import SECRET_KEY
-
+from bson import ObjectId
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from config import CLIENT_ID  # Make sure to add this to your config
 ALGORITHM = "HS256"
 
 print("SECRET_KEY:", SECRET_KEY)
@@ -29,10 +32,18 @@ def verify_access_token(token: str):
 def get_current_user(token: str = Depends(oauth2_scheme)):
     return verify_access_token(token)
 
-
 async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
-    existing_user = await db.users.find_one({"email": user.email})
+    # Check if username already exists
+    existing_user = await db.users.find_one({"username": user.username})
     if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered"
+        )
+    
+    # Check if email already exists
+    existing_email = await db.users.find_one({"email": user.email})
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
@@ -43,13 +54,25 @@ async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
     result = await db.users.insert_one(user_data)
     user_id = str(result.inserted_id)
     access_token = create_access_token(data={"user_id": user_id})
-    print("id: ",user_id)
-    print("access_token ",access_token)
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
     existing_user = await db.users.find_one({"email": user.email})
-    if not existing_user or not verify_password(user.password, existing_user["password"]):
+    
+    if not existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    # Check if this is a Google user
+    if existing_user.get("is_google_user", False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account was created with Google. Please login with Google."
+        )
+    
+    if not verify_password(user.password, existing_user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
@@ -69,3 +92,99 @@ def is_user_logged_in(token: str = Depends(oauth2_scheme)) -> bool:
     except HTTPException:
         
         return False
+async def authenticate_google_user(token: str, db: AsyncIOMotorDatabase, state: int):
+    """
+    Handle Google OAuth authentication for login (state=0) or registration (state=1).
+    
+    Args:
+        token: Google ID token
+        db: Database instance
+        state: 0 for login, 1 for registration
+    
+    Returns:
+        dict: Contains access_token and token_type
+    
+    Raises:
+        HTTPException: For various error cases
+    """
+    try:
+        # Verify the Google ID token
+        idinfo = id_token.verify_oauth2_token(
+            token, 
+            google_requests.Request(),
+            CLIENT_ID
+        )
+        email = idinfo["email"]
+        user = await db.users.find_one({"email": email})
+
+        # Login flow
+        if state == 0:
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Account not found. Please register first."
+                )
+
+            return {
+                "access_token": create_access_token(data={"user_id": str(user["_id"])}),
+                "token_type": "bearer"
+            }
+
+        # Registration flow
+        elif state == 1:
+            if user:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already registered. Please login."
+                )
+            
+            # Create new user from Google data
+            username = idinfo.get("given_name", "") or email.split("@")[0]
+            username = await generate_unique_username(db, username)
+            
+            user_data = {
+                "email": email,
+                "username": username,
+                "google_id": idinfo["sub"],
+                "is_google_user": True,
+                "name": idinfo.get("name", ""),
+                "picture": idinfo.get("picture", ""),
+                "password": ""  # No password for Google users
+            }
+            
+            result = await db.users.insert_one(user_data)
+            return {
+                "access_token": create_access_token(data={"user_id": str(result.inserted_id)}),
+                "token_type": "bearer"
+            }
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid state parameter"
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token"
+        )
+    except HTTPException:
+        raise  # Re-raise existing HTTP exceptions
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authentication failed: {str(e)}"
+        )
+
+async def generate_unique_username(db: AsyncIOMotorDatabase, base_username: str) -> str:
+    """
+    Generate a unique username by appending numbers if needed
+    """
+    username = base_username
+    counter = 1
+    
+    while await db.users.find_one({"username": username}):
+        username = f"{base_username}{counter}"
+        counter += 1
+    
+    return username
