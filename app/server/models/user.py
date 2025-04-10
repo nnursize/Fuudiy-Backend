@@ -1,6 +1,8 @@
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
+class AllergiesUpdateModel(BaseModel):
+    allergies: List[str]
 
 class DislikedIngredientsUpdateModel(BaseModel):
     dislikedIngredients: List[str]
