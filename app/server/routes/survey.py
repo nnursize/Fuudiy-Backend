@@ -31,3 +31,45 @@ async def submit_survey(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail="Failed to save survey responses"
     )
+
+
+@router.post("/add-to-wanna-try/{username}/{food_id}", tags=["Survey"])
+async def add_to_wanna_try(
+    username: str,
+    food_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    try:
+        # Find user by username
+        user = await db.users.find_one({"username": username})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user_id = str(user["_id"])
+
+        # Find the survey for this user
+        survey = await db.surveys.find_one({"user_id": user_id})
+        if not survey:
+            raise HTTPException(status_code=404, detail="Survey not found for user")
+
+        # Check if wannaTry field exists, if not, initialize it
+        existing_wanna_try = survey.get("wannaTry", [])
+
+        if food_id in existing_wanna_try:
+            return {"message": "Food already in wannaTry list"}
+
+        existing_wanna_try.append(food_id)
+
+        # Update the survey
+        result = await db.surveys.update_one(
+            {"_id": survey["_id"]},
+            {"$set": {"wannaTry": existing_wanna_try}}
+        )
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=500, detail="Failed to update wannaTry list")
+
+        return {"message": "Food added to wannaTry list", "wannaTry": existing_wanna_try}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
