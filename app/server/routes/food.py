@@ -12,7 +12,8 @@ from server.services.food_service import (
     retrieve_foods,
     retrieve_first_10_foods,
     update_food,
-    get_top_4_food,  
+    get_top_5_food,
+    get_top_rated_foods_by_cuisine,  
 )
 from server.models.food import (
     ErrorResponseModel,
@@ -33,10 +34,20 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 # Google Cloud Storage details
 BUCKET_NAME = "fuudiy_bucket"
 
-@router.get("/", tags=["Food"], response_model=list)
-async def fetch_foods():
+@router.get("/top-5-foods", tags=["Food"], response_model=list)
+async def fetch_top_5_foods():
     try:
-        foods = await get_top_4_food()
+        foods = await get_top_5_food()
+        if not foods:
+            raise HTTPException(status_code=404, detail="No food items found.")
+        return foods
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/top-foods-by-country", tags=["Food"], response_model=list)
+async def fetch_top_foods_by_countries():
+    try:
+        foods = await get_top_rated_foods_by_cuisine()
         if not foods:
             raise HTTPException(status_code=404, detail="No food items found.")
         return foods
