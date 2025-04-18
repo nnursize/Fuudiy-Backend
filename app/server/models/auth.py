@@ -46,6 +46,8 @@ class ResetPasswordForm(BaseModel):
     token: str
     new_password: str
     
+class EmailRequest(BaseModel):
+    email: EmailStr
 # Utility functions
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)

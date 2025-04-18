@@ -2,7 +2,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, Request, HTTPException,BackgroundTasks
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from server.services.auth_service import send_reset_email,create_access_token,register_user, login_user, get_current_user,verify_access_token,oauth2_scheme
-from server.models.auth import UserCreate, UserLogin, Token, ResetPasswordForm
+from server.models.auth import UserCreate, UserLogin, Token, ResetPasswordForm,EmailRequest,get_password_hash
 from server.database import database
 from datetime import datetime, timedelta
 import secrets
@@ -80,10 +80,11 @@ async def google_register(google_token: GoogleToken, db: AsyncIOMotorDatabase = 
 
 @router.post("/forgot-password", tags=["Auth"])
 async def forgot_password(
-    email: EmailStr,
+    request: EmailRequest,
     background_tasks: BackgroundTasks,
     db: AsyncIOMotorDatabase = Depends(lambda: database),
 ):
+    email = request.email
     user = await db.users.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
