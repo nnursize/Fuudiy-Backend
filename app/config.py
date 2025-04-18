@@ -12,3 +12,18 @@ COLLECTION_SURVEY = os.getenv("COLLECTION_SURVEY")
 COLLECTION_USER_COMMENTS = os.getenv("COLLECTION_USER_COMMENTS")
 
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+EMAIL_USER = os.getenv("EMAIL_USERNAME")
+EMAIL_PASS = os.getenv("EMAIL_PASSWORD")
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+x = os.getenv("xxx")
+
+print(EMAIL_HOST)
+print(EMAIL_PORT)
+print(EMAIL_PASS)
+print(EMAIL_USER)
+print(x)
+
+
+

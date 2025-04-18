@@ -41,6 +41,11 @@ class TokenData(BaseModel):
     
 class GoogleToken(BaseModel):
     token: str
+
+class ResetPasswordForm(BaseModel):
+    token: str
+    new_password: str
+    
 # Utility functions
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
@@ -63,3 +68,5 @@ def verify_access_token(token: str):
         return token_data.user_id
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+
