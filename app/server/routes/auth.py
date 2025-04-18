@@ -122,6 +122,7 @@ async def reset_password(
 
     # Update user's password
     hashed = get_password_hash(data.new_password)
+    print("hash",hashed)
     await db.users.update_one({"email": token_doc["email"]}, {"$set": {"password": hashed}})
     await db.reset_pass.update_one({"_id": token_doc["_id"]}, {"$set": {"used": True}})
 

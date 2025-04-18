@@ -10,7 +10,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 import smtplib
 from email.message import EmailMessage
-from config import CLIENT_ID,EMAIL_HOST,EMAIL_PASS,EMAIL_PORT,EMAIL_USER  # Make sure to add this to your config
+from config import CLIENT_ID,EMAIL_HOST,EMAIL_PASS,EMAIL_PORT,EMAIL_USER, SERVER  # Make sure to add this to your config
 ALGORITHM = "HS256"
 
 print("SECRET_KEY:", SECRET_KEY)
@@ -70,7 +70,7 @@ async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
         )
     
     # Check if this is a Google user
-    if existing_user.get("is_google_user", False):
+    if existing_user.get("is_google_user", False) and not existing_user.get("password"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This account was created with Google. Please login with Google."
@@ -195,7 +195,7 @@ async def generate_unique_username(db: AsyncIOMotorDatabase, base_username: str)
 
 async def send_reset_email(email: str, token: str):
     msg = EmailMessage()
-    reset_url = f"http://localhost:3000/reset-password?token={token}"  # Adjust if deployed
+    reset_url = f"{SERVER}/reset-password?token={token}"  # Adjust if deployed
     msg.set_content(f"Click the link to reset your password: {reset_url}")
     msg["Subject"] = "Password Reset Request"
     msg["From"] = EMAIL_USER

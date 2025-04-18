@@ -17,6 +17,7 @@ EMAIL_USER = os.getenv("EMAIL_USERNAME")
 EMAIL_PASS = os.getenv("EMAIL_PASSWORD")
 EMAIL_HOST = os.getenv("EMAIL_HOST")
 EMAIL_PORT = os.getenv("EMAIL_PORT")
+SERVER = os.getenv("SERVER")
 x = os.getenv("xxx")
 
 print(EMAIL_HOST)
