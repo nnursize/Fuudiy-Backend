@@ -8,6 +8,7 @@ from server.routes.survey import router as SurveyRouter
 from server.routes.translation import router as TranslationRouter
 from server.database import database
 from server.routes.explore import router as ExploreRouter
+from server.routes.search import router as SearchRouter
 from spark_utils import spark
 #from server.routes.similarity_explore import
 
@@ -34,6 +35,7 @@ app.include_router(AuthRouter, prefix="/auth", tags=["Auth"])
 app.include_router(SurveyRouter, prefix="/survey", tags=["Survey"])
 app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
 app.include_router(ExploreRouter, prefix="/explore", tags=["Explore"])
+app.include_router(SearchRouter, prefix="/api", tags=["SearchBar"])
 
 #app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
 
