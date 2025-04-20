@@ -13,11 +13,7 @@ from email.message import EmailMessage
 from config import CLIENT_ID,EMAIL_HOST,EMAIL_PASS,EMAIL_PORT,EMAIL_USER, SERVER  # Make sure to add this to your config
 ALGORITHM = "HS256"
 
-print("SECRET_KEY:", SECRET_KEY)
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-print(EMAIL_PASS)
-print(EMAIL_USER)
 
 
 def verify_access_token(token: str):
