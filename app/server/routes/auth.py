@@ -1,10 +1,12 @@
 from bson import ObjectId
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException,BackgroundTasks
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from server.services.auth_service import create_access_token,register_user, login_user, get_current_user,verify_access_token,oauth2_scheme
-from server.models.auth import UserCreate, UserLogin, Token
+from server.services.auth_service import send_reset_email,create_access_token,register_user, login_user, get_current_user,verify_access_token,oauth2_scheme
+from server.models.auth import UserCreate, UserLogin, Token, ResetPasswordForm,EmailRequest,get_password_hash
 from server.database import database
-
+from datetime import datetime, timedelta
+import secrets
+from pydantic import EmailStr
 router = APIRouter()
 
 survey_collection = database.get_collection("surveys")
@@ -75,3 +77,53 @@ async def google_login(google_token: GoogleToken, db: AsyncIOMotorDatabase = Dep
 async def google_register(google_token: GoogleToken, db: AsyncIOMotorDatabase = Depends(get_db)):
     return await authenticate_google_user(google_token.token, db, 1)
     
+
+@router.post("/forgot-password", tags=["Auth"])
+async def forgot_password(
+    request: EmailRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncIOMotorDatabase = Depends(lambda: database),
+):
+    email = request.email
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Create a secure token
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(minutes=30)
+
+    # Save token to reset_pass collection
+    await db.reset_pass.insert_one({
+        "email": email,
+        "token": token,
+        "expires_at": expires_at,
+        "used": False
+    })
+
+    # Send the email in background
+    background_tasks.add_task(send_reset_email, email, token)
+
+    return {"message": "Reset link sent to your email"}
+
+
+@router.post("/reset-password", tags=["Auth"])
+async def reset_password(
+    data: ResetPasswordForm,
+    db: AsyncIOMotorDatabase = Depends(lambda: database)
+):
+    token_doc = await db.reset_pass.find_one({"token": data.token, "used": False})
+
+    if not token_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    if token_doc["expires_at"] < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="Token expired")
+
+    # Update user's password
+    hashed = get_password_hash(data.new_password)
+    print("hash",hashed)
+    await db.users.update_one({"email": token_doc["email"]}, {"$set": {"password": hashed}})
+    await db.reset_pass.update_one({"_id": token_doc["_id"]}, {"$set": {"used": True}})
+
+    return {"message": "Password reset successful"}
