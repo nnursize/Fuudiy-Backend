@@ -53,13 +53,13 @@ survey_df = load_food_data(spark, COLLECTION_SURVEY).cache()
 
 food_df = (
     load_food_data(spark, COLLECTION_FOOD)
-    .select("_id", "country", "ingredients", "name")
+    .select("_id", "country", "ingredients", "name", "url_id")
     .withColumn(
         "ingredients",
         F.array_distinct(
             F.transform(
-                F.split(F.col("ingredients"), "\s*,\s*"),
-                lambda x: F.regexp_replace(F.lower(F.trim(x)), r's$', '')
+                F.col("ingredients"),  # operate directly on the array
+                lambda x: F.regexp_replace(F.lower(F.trim(x)), r"s$", "")
             )
         )
     )
@@ -202,8 +202,9 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
         for row in commented_foods_data:
             rate = row['rate']
             ingredients = row['ingredients']
+            rate_val = float(rate) if rate is not None else 3.0
             # Scale adjustment to match survey's impact (rate - 3) * 1.0
-            adjustment = (rate - 3) * 1.0
+            adjustment = (rate_val - 3) * 1.0
             for ingredient in ingredients:
                 ingredient_adjustments[ingredient] += adjustment
 
@@ -292,7 +293,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
         # 5. Join with food data to get details
         if similarity_recommendations.count() > 0:
             similar_foods = similarity_recommendations.join(
-                food_df.select("_id", "name", "country", "ingredients"),
+                food_df.select("_id", "name", "country", "ingredients", "url_id"),
                 F.col("foodId") == F.col("_id"),
                 "inner"
             ).select(
@@ -300,6 +301,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
                 "name",
                 "country",
                 "ingredients",
+                "url_id",
                 "similar_user_count",
                 "average_rating"
             )
@@ -329,6 +331,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
                 "_id",
                 "name",
                 "country",
+                "url_id",
                 F.expr("transform(ingredients, x -> lower(trim(x)))").alias("ingredients"),
                 "score"
             )

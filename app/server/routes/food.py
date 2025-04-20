@@ -12,7 +12,8 @@ from server.services.food_service import (
     retrieve_foods,
     retrieve_first_10_foods,
     update_food,
-    get_top_4_food,  
+    get_top_5_food,
+    get_top_rated_foods_by_cuisine,  
 )
 from server.models.food import (
     ErrorResponseModel,
@@ -27,16 +28,26 @@ current_file = Path(__file__)
 credentials_path = current_file.parents[3] / "gcs-key.json"
 
 router = APIRouter()
-food_collection = database.get_collection("foods")
+food_collection = database.get_collection("cleaned_foods")
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 # Google Cloud Storage details
 BUCKET_NAME = "fuudiy_bucket"
 
-@router.get("/", tags=["Food"], response_model=list)
-async def fetch_foods():
+@router.get("/top-5-foods", tags=["Food"], response_model=list)
+async def fetch_top_5_foods():
     try:
-        foods = await get_top_4_food()
+        foods = await get_top_5_food()
+        if not foods:
+            raise HTTPException(status_code=404, detail="No food items found.")
+        return foods
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/top-foods-by-country", tags=["Food"], response_model=list)
+async def fetch_top_foods_by_countries():
+    try:
+        foods = await get_top_rated_foods_by_cuisine()
         if not foods:
             raise HTTPException(status_code=404, detail="No food items found.")
         return foods
@@ -128,7 +139,7 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
         old_rate = user_comment.get("rate", 0)
 
         # ✅ Find the food item
-        food = await database.get_collection("foods").find_one({"_id": food_obj_id})
+        food = await database.get_collection("cleaned_foods").find_one({"_id": food_obj_id})
         if not food:
             raise HTTPException(status_code=404, detail="Food not found")
 
@@ -144,7 +155,7 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
             new_rating = new_rate  # If no previous votes, take new rate as rating
 
         # ✅ Update the food's popularity
-        await database.get_collection("foods").update_one(
+        await database.get_collection("cleaned_foods").update_one(
             {"_id": food_obj_id},
             {"$set": {"popularity.rating": new_rating}}
         )

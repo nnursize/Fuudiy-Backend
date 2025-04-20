@@ -9,6 +9,7 @@ from server.routes.translation import router as TranslationRouter
 from server.routes.connection import router as ConnectionRouter
 from server.database import database
 from server.routes.explore import router as ExploreRouter
+from server.routes.search import router as SearchRouter
 from spark_utils import spark
 #from server.routes.similarity_explore import
 
@@ -36,6 +37,7 @@ app.include_router(SurveyRouter, prefix="/survey", tags=["Survey"])
 app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
 app.include_router(ExploreRouter, prefix="/explore", tags=["Explore"])
 app.include_router(ConnectionRouter, prefix="/connections", tags=["Connection"])
+app.include_router(SearchRouter, prefix="/api", tags=["SearchBar"])
 
 #app.include_router(TranslationRouter, prefix="/translation", tags=["Translation"])
 
