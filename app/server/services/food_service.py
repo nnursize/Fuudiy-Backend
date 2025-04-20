@@ -2,16 +2,30 @@ from server.database import database
 from bson import ObjectId
 import ast
 
-food_collection = database.get_collection("foods")
+food_collection = database.get_collection("cleaned_foods")
 
 # helpers
+
+def safe_list_field(raw):
+    if isinstance(raw, str):
+        try:
+            parsed = ast.literal_eval(raw)
+            if isinstance(parsed, list):
+                return parsed
+        except (ValueError, SyntaxError):
+            pass
+        return []
+    elif isinstance(raw, list):
+        return raw
+    else:
+        return []
 
 def food_helper(food) -> dict:
     return {
         "id": str(food["_id"]),
         "url_id": int(food.get("url_id", 0)),
         "name": food.get("name", "Unknown"),
-        "ingredients": ast.literal_eval(food["ingredients"]) if isinstance(food.get("ingredients"), str) else [],
+        "ingredients": safe_list_field(food.get("ingredients")),
         "category": food.get("category", "Uncategorized"),
         "country": food.get("country", "Unknown"),
         "keywords": ast.literal_eval(food["keywords"]) if isinstance(food.get("keywords"), str) else [],
