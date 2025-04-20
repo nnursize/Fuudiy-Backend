@@ -58,8 +58,8 @@ food_df = (
         "ingredients",
         F.array_distinct(
             F.transform(
-                F.split(F.col("ingredients"), "\s*,\s*"),
-                lambda x: F.regexp_replace(F.lower(F.trim(x)), r's$', '')
+                F.col("ingredients"),  # operate directly on the array
+                lambda x: F.regexp_replace(F.lower(F.trim(x)), r"s$", "")
             )
         )
     )
