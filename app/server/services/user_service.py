@@ -41,6 +41,7 @@ async def retrieve_current_user(id: str) -> dict:
         return user_helper(user)
     
 async def retrieve_user(username: str) -> dict:
+    print("RETRIEVE USER")
     user = await user_collection.find_one({"username": username})
     if user:
         return user_helper(user)
@@ -64,3 +65,14 @@ async def delete_user(id: str):
         await user_collection.delete_one({"_id": ObjectId(id)})
         return True
     return False
+
+async def retrieve_user_by_id(user_id: str) -> dict:
+    try:
+        object_id = ObjectId(user_id)
+    except:
+        return None  # invalid ID
+
+    user = await user_collection.find_one({"_id": object_id})
+    if user:
+        return user_helper(user)
+    return None
