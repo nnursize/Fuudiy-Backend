@@ -46,8 +46,6 @@ async def add_food(food_data: dict) -> dict:
     return food_helper(new_food)
 
 
-
-
 # Retrieve a food item with a matching ID
 async def retrieve_food(id: str) -> dict:
     food = await food_collection.find_one({"_id": ObjectId(id)})
@@ -82,8 +80,49 @@ async def delete_food(id: str):
 
 
 # Retrieve top 4 foods
-async def get_top_4_food():
+async def get_top_5_food():
+    pipeline = [
+        # compute each doc’s highest rating from the popularity array
+        {
+            "$addFields": {
+                "maxRating": {"$max": "$popularity.rating"}
+            }
+        },
+        # sort descending by that computed field
+        {"$sort": {"maxRating": -1}},
+        # take the very top 5
+        {"$limit": 5}
+    ]
+
+    cursor = food_collection.aggregate(pipeline)
     foods = []
-    async for food in food_collection.find({"country": "Indian"}).limit(4):
+    async for food in cursor:
         foods.append(food_helper(food))
     return foods
+
+async def get_top_rated_foods_by_cuisine():
+    cuisines = [
+        "Spanish", "Mexican", "Vietnamese", "Thai", "Turkish", "Korean",
+        "Italian", "Japanese", "French", "Chinese", "American", "Brazilian",
+        "Indian", "Greek", "German", "British"
+    ]
+    
+    result = []
+    
+    # Process each cuisine separately
+    for cuisine in cuisines:
+        pipeline = [
+            {"$match": {"country": cuisine}},
+            {"$addFields": {"maxRating": {"$max": "$popularity.rating"}}},
+            {"$sort": {"maxRating": -1}},
+            {"$limit": 1}
+        ]
+        
+        cursor = food_collection.aggregate(pipeline)
+        docs = await cursor.to_list(length=1)
+        
+        if docs:
+            food = food_helper(docs[0])
+            result.append(food)
+    
+    return result
