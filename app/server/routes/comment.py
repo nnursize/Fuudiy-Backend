@@ -65,22 +65,32 @@ async def add_comment_data(
     comment: str = Body(None, embed=True),
     user_id: str = Depends(get_current_user)
 ):
-    # Bypass the Pydantic model completely
+    from bson import ObjectId
+
+    # Check if user already commented on this food
+    existing = await database.get_collection("comments").find_one({
+        "userId": ObjectId(user_id),
+        "foodId": ObjectId(food_id)
+    })
+
+    if existing:
+        raise HTTPException(status_code=400, detail="You have already commented on this food.")
+
+    # Insert using camelCase keys
     comment_data = {
-        "user_id": ObjectId(user_id),
-        "food_id": ObjectId(food_id),
+        "userId": ObjectId(user_id),   # ✅ Use camelCase
+        "foodId": ObjectId(food_id),   # ✅ Use camelCase
         "rate": rate,
         "comment": comment
     }
-    
-    print("Comment data:", comment_data)
-    
+
     try:
         new_comment = await add_comment(comment_data)
         return ResponseModel(new_comment, "Comment added successfully.")
     except Exception as e:
         print("Error adding comment:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.put("/{comment_id}", tags=["Comment"], response_description="Update a comment")
 async def update_comment_data(comment_id: str, update_data: UpdateCommentModel = Body(...)):
@@ -117,5 +127,34 @@ async def update_comment_rate_with_token(
         return {"message": f"Rate updated successfully for user {user_id} on food {food_id}."}
     raise HTTPException(status_code=404, detail="Comment not found")
 
+
+@router.get("/has-commented/{food_id}/{username}", tags=["Comment"])
+async def has_user_commented(food_id: str, username: str):
+    """
+    Checks if a user (by username) has already commented on the given food.
+    """
+    from bson import ObjectId
+
+    try:
+        food_obj_id = ObjectId(food_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid food_id")
+
+    user = await database.get_collection("users").find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+
+    user_id = user["_id"]
+
+    print("Checking for userId:", user_id, "and foodId:", food_obj_id)
+
+    comment = await database.get_collection("user_comments").find_one({
+        "userId": user_id,   # ✅ Already an ObjectId
+        "foodId": food_obj_id
+    })
+
+    print("Comment found:", comment)
+
+    return {"hasCommented": bool(comment)}
 
 
