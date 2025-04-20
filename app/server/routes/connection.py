@@ -116,7 +116,7 @@ async def update_connection_status(update: ConnectionStatusUpdate, user_id: str 
 
     connection = await connection_collection.find_one({"_id": conn_id})
 
-    print("updated connection: ", connection)
+    print(" AAAAAAA updated connection: ", connection)
 
     if not connection:
         raise HTTPException(status_code=404, detail="Connection not found.")
@@ -231,3 +231,25 @@ async def get_connection_status(from_username: str, to_username: str):
         return {"status": None}
 
     return {"status": connection["status"]}
+
+
+@router.delete("/remove-by-id/{connection_id}", tags=["Connection"])
+async def remove_connection_by_id(connection_id: str, user_id: str = Depends(get_current_user)):
+    try:
+        conn_id = ObjectId(connection_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid connection ID.")
+
+    connection = await connection_collection.find_one({"_id": conn_id})
+    if not connection:
+        raise HTTPException(status_code=404, detail="Connection not found.")
+
+    # Only the "to" user (recipient) can reject
+    if str(connection["to"]) != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this connection.")
+
+    result = await connection_collection.delete_one({"_id": conn_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=400, detail="Failed to delete connection.")
+
+    return {"message": "Connection request rejected and removed."}
