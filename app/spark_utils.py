@@ -18,8 +18,8 @@ def get_spark_session():
         .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
         .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.12:10.3.0") \
         .config("spark.mongodb.read.connection.uri", MONGO_URI) \
+        .config("spark.mongodb.read.connection.uri", MONGO_URI) \
+        .config("spark.mongodb.write.connection.uri", MONGO_URI) \
         .getOrCreate()
-        #.config("spark.mongodb.read.connection.uri", MONGO_URI) \
-        #.config("spark.mongodb.write.connection.uri", MONGO_URI) \
     return spark
 spark = get_spark_session()

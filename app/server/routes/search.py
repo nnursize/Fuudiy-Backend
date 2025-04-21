@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query, HTTPException
 from server.database import database
 
 router = APIRouter(tags=["Search"])
-food_coll = database.get_collection("foods")
+food_coll = database.get_collection("cleaned_foods")
 user_coll = database.get_collection("users")
 
 @router.get("/search")
