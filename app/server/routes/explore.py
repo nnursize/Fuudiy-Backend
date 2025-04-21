@@ -14,17 +14,22 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from ..services.auth_service import get_current_user
 import traceback
 from collections import defaultdict
+from typing import Optional
 
 router = APIRouter()
 
+from pymongo import MongoClient
+
+client = MongoClient(MONGO_URI)
+db = client["fuudiy"]
 DISH_INGREDIENT_MAP = {
     "vegetarian_dishes": ["lettuce", "tomato"],
-    "meat_dishes": ["meat"],
-    "seafood": ["seafood", "crab", "fish"],
+    "meat_dishes": ["meat", "lamb", "beef", "steak"],
+    "seafood": ["lobster", "crab", "fish", "shellfish"],
     "pastries_and_bread": ["flour", "yeast"],
     "sweets_and_confectionery": ["sugar", "chocolate"],
-    "sushi": ["rice", "seafood", "nori"],
-    "pizza": ["cheese", "tomato", "flour"],
+    "sushi": ["rice", "fish", "nori", "tuna", "crab", "soy sauce"],
+    "pizza": ["cheese", "tomato", "flour", "saussage"],
     "dumpling": ["flour", "meat", "vegetables"],
     "hamburger": ["meat", "lettuce", "tomato", "bread"],
     "fried_chicken": ["chicken", "flour", "spices"],
@@ -160,15 +165,26 @@ tfidf_pipeline = Pipeline(stages=[
     CountVectorizer(inputCol="ingredients", outputCol="rawFeatures", vocabSize=10000),
     IDF(inputCol="rawFeatures", outputCol="features")
 ]).fit(food_df)
-food_df = tfidf_pipeline.transform(food_df).cache()
 
+#if 'food_df' in locals():
+#    food_df.unpersist()
+food_df = tfidf_pipeline.transform(food_df).cache()
+#food_df.unpersist()
 vector_to_array = F.udf(lambda v: v.toArray().tolist(), ArrayType(DoubleType()))
 
 # ---------- Recommendation Endpoint ----------
 @router.get("/recommend/")
-async def recommend_foods(country: str = Query(..., title="Target country"), user_id: str = Depends(get_current_user), top_n: int = 10):
+async def recommend_foods(country: str = Query(..., title="Target country"), diet: Optional[str] = Query(None, title="Dietary restriction"), user_id: str = Depends(get_current_user), top_n: int = 10):
+    
     print(f"Received country: {country}, user_id: {user_id}")  # Debugging
     try:
+        if diet is not None:
+            print("Diet:", diet)
+            restrictions = db["special_diet"].find_one({"category": diet.lower()})
+            exclusion_ingredients = restrictions.get("restricted_ingredients", []) if restrictions else []
+        else:
+            exclusion_ingredients = []
+            print("No diet filter")
         # 2. Validate user survey
         prefs = get_user_preferences(user_id)
         if isinstance(prefs, Row):  # If responses is stored as Row
@@ -177,6 +193,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
         """
         liked = set(parse_prefs(prefs.get("liked_ingredients")))
         print("Liked:  ",liked)
+        
         disliked = set(parse_prefs(prefs.get("disliked_ingredients"))) | \
                 set(parse_prefs(prefs.get("allergies")))
         print("DisLiked:  ",disliked)
@@ -220,7 +237,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
         country_foods = filter_disliked_allergies(
             food_df.filter(F.col("country") == country), 
             disliked=parse_prefs(prefs.get("disliked_ingredients")),
-            allergies=parse_prefs(prefs.get("allergies"))
+            allergies=set(parse_prefs(prefs.get("allergies"))) | set(exclusion_ingredients)
         ).withColumn("score", 
             F.aggregate(
                 vector_to_array("features"), 
@@ -307,11 +324,11 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
             )
             allergies = set(parse_prefs(prefs.get("allergies")))
 
-            if allergies:  # Only filter if there are allergies
+            if allergies or exclusion_ingredients:
                 similar_foods = filter_disliked_allergies(
                     similar_foods,
                     disliked={},
-                    allergies=set(parse_prefs(prefs.get("allergies")))
+                    allergies=set(parse_prefs(prefs.get("allergies"))) | set(exclusion_ingredients)
                 )
                 print(f"Remaining similar foods after allergen check: {similar_foods.count()}")
             else:
@@ -336,6 +353,14 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
                 "score"
             )
         )
+
+           # Apply final dietary filter
+        if exclusion_ingredients:
+            recommendations = filter_disliked_allergies(
+                recommendations,
+                disliked=[],
+                allergies=exclusion_ingredients
+            )
         # ========== Combine Results ==========
         main_recommendations = recommendations.toJSON().collect()
         print("Successfully generated recommendations")
@@ -353,12 +378,18 @@ async def recommend_foods(country: str = Query(..., title="Target country"), use
             detail=f"Recommendation engine failed: {str(e)}"
         )
 
-from pyspark.ml.linalg import Vectors
-import re
 
 @router.get("/similar/{food_id}")
-async def get_similar_foods(food_id: str, country: str = Query(..., title="Target country"), user_id: str = Depends(get_current_user),top_n: int = 10):
+async def get_similar_foods(food_id: str, country: str = Query(..., title="Target country"), diet: Optional[str] = Query(None, title="Dietary restriction"), user_id: str = Depends(get_current_user),top_n: int = 10):
     try:
+        
+        if diet is not None:
+            print("Diet:", diet)
+            restrictions = db["special_diet"].find_one({"category": diet.lower()})
+            exclusion_ingredients = restrictions.get("restricted_ingredients", []) if restrictions else []
+        else:
+            exclusion_ingredients = []
+            print("No diet filter")
          # 1. Validate target country exists
         country_count = food_df.filter(F.col("country") == country).count()
         if country_count == 0:
@@ -385,15 +416,15 @@ async def get_similar_foods(food_id: str, country: str = Query(..., title="Targe
         ) 
         allergies = set(parse_prefs(prefs.get("allergies")))
         # 5. Filter disliked ingredients
-        if allergies:  # Only filter if there are allergies
+        if allergies or exclusion_ingredients:
                 country_foods = filter_disliked_allergies(
                     country_foods.filter(F.col("country") == country),
                     disliked={},
-                    allergies=set(parse_prefs(prefs.get("allergies")))
+                    allergies=set(parse_prefs(prefs.get("allergies"))) | set(exclusion_ingredients)
                 )
-                print(f"Remaining similar foods after allergen check: {country_foods.count()}")
+                print(f"Remaining after filters: {country_foods.count()}")
         else:
-            print("No allergens to filter")
+            print("No filters applied")
 
         # 6. Calculate cosine similarity
         target_vector = target_food.features
@@ -412,9 +443,17 @@ async def get_similar_foods(food_id: str, country: str = Query(..., title="Targe
             "similarity", similarity_udf(F.col("features"))
         ).orderBy(F.desc("similarity")).limit(top_n)
 
+      # Apply final dietary filter
+        if exclusion_ingredients:
+            similar_foods = filter_disliked_allergies(
+                similar_foods,
+                disliked=[],
+                allergies=exclusion_ingredients
+            )
+
         return {
             "results": similar_foods.select(
-                "_id", "name", "country", "ingredients", "similarity"
+                "_id", "name", "country", "ingredients", "similarity", "url_id"
             ).toJSON().collect()
         }
     except Exception as e:
