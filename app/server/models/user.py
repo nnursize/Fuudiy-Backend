@@ -13,6 +13,7 @@ class UserSchema(BaseModel):
     password: str
     bio: Optional[str] = ""
     avatarId: Optional[str] = ""
+    has_completed_survey: bool = False  # default when registering
 
     class Config:
         json_schema_extra = {
