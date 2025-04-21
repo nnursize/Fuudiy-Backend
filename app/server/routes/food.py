@@ -5,6 +5,12 @@ from fastapi import APIRouter, Body, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from bson import ObjectId
 from server.database import database
+from functools import lru_cache
+from fastapi import HTTPException
+from google.cloud import storage
+import os
+import asyncio
+import logging
 from server.services.food_service import (
     add_food,
     delete_food,
@@ -31,90 +37,97 @@ router = APIRouter()
 food_collection = database.get_collection("cleaned_foods")
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
-# Google Cloud Storage details
 BUCKET_NAME = "fuudiy_bucket"
+logger = logging.getLogger(__name__)
 
-@router.get("/top-5-foods", tags=["Food"], response_model=list)
-async def fetch_top_5_foods():
+# Cache configuration
+CACHE_TTL = 55 * 60  # 55 minutes
+
+# Initialize GCS components once at startup
+storage_client = storage.Client()
+bucket = storage_client.bucket(BUCKET_NAME)
+
+@lru_cache(maxsize=1024)
+def get_image_url(image_id: str) -> str:
+    """Generate cached signed URL with automatic refresh"""
     try:
-        foods = await get_top_5_food()
-        if not foods:
-            raise HTTPException(status_code=404, detail="No food items found.")
-        return foods
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-@router.get("/top-foods-by-country", tags=["Food"], response_model=list)
-async def fetch_top_foods_by_countries():
-    try:
-        foods = await get_top_rated_foods_by_cuisine()
-        if not foods:
-            raise HTTPException(status_code=404, detail="No food items found.")
-        return foods
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/", tags=["Food"], response_description="Food data added into the database")
-async def add_food_data(food: FoodSchema = Body(...)):
-    food = jsonable_encoder(food)
-    new_food = await add_food(food)
-    return ResponseModel(new_food, "Food added successfully.")
-
-
-# @router.get("/", response_description="Foods retrieved")
-# async def get_foods():
-#     foods = await retrieve_first_10_foods()
-#     if foods:
-#         return ResponseModel(foods, "Food data retrieved successfully")
-#     return ResponseModel(foods, "Empty list returned")
-
-
-@router.get("/{id}", tags=["Food"])
-async def get_food(id: str):
-    try:
-        food = await retrieve_food(id)
-        if not food:
-            raise HTTPException(status_code=404, detail="Food not found")
-        return jsonable_encoder(food)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-# Get image url
-
-def get_image_url(image_id):
-    """Generate a signed URL to access a private image in GCS."""
-    try:
-        if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-            raise ValueError("GOOGLE_APPLICATION_CREDENTIALS not set")
-
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(BUCKET_NAME)
         blob = bucket.blob(f"{image_id}.png")
         
         if not blob.exists():
-            print(f"Image {image_id}.png not found in bucket {BUCKET_NAME}")
-            return None  
+            logger.info(f"Image {image_id} not found")
+            # Invalidate cache for this image_id
+            get_image_url.cache_invalidate(image_id)
+            return None
 
-        # Generate a signed URL valid for 1 hour
-        signed_url = blob.generate_signed_url(
+        return blob.generate_signed_url(
             version="v4",
-            expiration=3600,  # 1 hour expiration
+            expiration=3600,
             method="GET"
         )
-        return signed_url
-
     except Exception as e:
-        print(f"Error generating signed URL: {str(e)}")
+        logger.error(f"GCS Error: {str(e)}")
         return None
+
+@router.on_event("startup")
+async def startup_event():
+    async def cache_cleaner():
+        while True:
+            await asyncio.sleep(CACHE_TTL)
+            get_image_url.cache_clear()
+            logger.info("Cleared image URL cache")
+    
+    # Start cache cleaner in background
+    asyncio.create_task(cache_cleaner())
 
 @router.get("/image/{image_id}")
 async def fetch_image(image_id: str):
     url = get_image_url(image_id)
     if not url:
+        # Immediately invalidate cache entry if image is missing
+        get_image_url.cache_invalidate(image_id)
         raise HTTPException(status_code=404, detail="Image not found in GCS")
-
     return {"image_url": url}
+
+# Food endpoints with caching
+@router.get("/top-5-foods", tags=["Food"], response_model=list)
+async def fetch_top_5_foods():
+    try:
+        if not (foods := await get_top_5_food()):
+            raise HTTPException(status_code=404, detail="No food items found.")
+        return foods
+    except Exception as e:
+        logger.error(f"Top foods error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/top-foods-by-country", tags=["Food"], response_model=list)
+async def fetch_top_foods_by_countries():
+    try:
+        if not (foods := await get_top_rated_foods_by_cuisine()):
+            raise HTTPException(status_code=404, detail="No food items found.")
+        return foods
+    except Exception as e:
+        logger.error(f"Country foods error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.post("/", tags=["Food"], response_description="Food data added into the database")
+async def add_food_data(food: FoodSchema = Body(...)):
+    try:
+        food_data = jsonable_encoder(food)
+        new_food = await add_food(food_data)
+        return ResponseModel(new_food, "Food added successfully.")
+    except Exception as e:
+        logger.error(f"Add food error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/{id}", tags=["Food"])
+async def get_food(id: str):
+    try:
+        if not (food := await retrieve_food(id)):
+            raise HTTPException(status_code=404, detail="Food not found")
+        return jsonable_encoder(food)
+    except Exception as e:
+        logger.error(f"Get food error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.put("/update-rating/{user_id}/{food_id}", tags=["Food"], response_description="Update the food rating")
 async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(..., ge=1, le=5)):
