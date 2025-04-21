@@ -13,11 +13,7 @@ from email.message import EmailMessage
 from config import CLIENT_ID,EMAIL_HOST,EMAIL_PASS,EMAIL_PORT,EMAIL_USER, SERVER  # Make sure to add this to your config
 ALGORITHM = "HS256"
 
-print("SECRET_KEY:", SECRET_KEY)
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-print(EMAIL_PASS)
-print(EMAIL_USER)
 
 
 def verify_access_token(token: str):
@@ -55,6 +51,7 @@ async def register_user(user: UserCreate, db: AsyncIOMotorDatabase):
     
     user_data = user.dict()
     user_data["password"] = get_password_hash(user.password)
+    user_data["has_completed_survey"] = False
     result = await db.users.insert_one(user_data)
     user_id = str(result.inserted_id)
     access_token = create_access_token(data={"user_id": user_id})
@@ -85,7 +82,11 @@ async def login_user(user: UserLogin, db: AsyncIOMotorDatabase):
     user_id = str(existing_user["_id"])
     access_token = create_access_token(data={"user_id": user_id})
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "has_completed_survey": existing_user.get("has_completed_survey", False)
+    }
 
 
 def is_user_logged_in(token: str = Depends(oauth2_scheme)) -> bool:
@@ -131,7 +132,8 @@ async def authenticate_google_user(token: str, db: AsyncIOMotorDatabase, state: 
 
             return {
                 "access_token": create_access_token(data={"user_id": str(user["_id"])}),
-                "token_type": "bearer"
+                "token_type": "bearer",
+                "has_completed_survey": user.get("has_completed_survey", False)
             }
 
         # Registration flow
@@ -153,7 +155,8 @@ async def authenticate_google_user(token: str, db: AsyncIOMotorDatabase, state: 
                 "is_google_user": True,
                 "name": idinfo.get("name", ""),
                 "picture": idinfo.get("picture", ""),
-                "password": ""  # No password for Google users
+                "password": "" , # No password for Google users
+                "has_completed_survey" : False
             }
             
             result = await db.users.insert_one(user_data)
