@@ -1,3 +1,4 @@
+from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from ..models.survey import SurveyResponse
@@ -24,7 +25,7 @@ async def submit_survey(
     if inserted_id:
         # ✅ Update the user document to mark the survey as completed
         await db.users.update_one(
-            {"_id": user_id},
+            {"_id": ObjectId(user_id)},
             {"$set": {"has_completed_survey": True}}
         )
 
