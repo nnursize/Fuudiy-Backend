@@ -34,7 +34,7 @@ current_file = Path(__file__)
 credentials_path = current_file.parents[3] / "gcs-key.json"
 
 router = APIRouter()
-food_collection = database.get_collection("cleaned_foods")
+food_collection = database.get_collection("foods")
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 BUCKET_NAME = "fuudiy_bucket"
@@ -152,7 +152,7 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
         old_rate = user_comment.get("rate", 0)
 
         # ✅ Find the food item
-        food = await database.get_collection("cleaned_foods").find_one({"_id": food_obj_id})
+        food = await database.get_collection("foods").find_one({"_id": food_obj_id})
         if not food:
             raise HTTPException(status_code=404, detail="Food not found")
 
@@ -168,7 +168,7 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
             new_rating = new_rate  # If no previous votes, take new rate as rating
 
         # ✅ Update the food's popularity
-        await database.get_collection("cleaned_foods").update_one(
+        await database.get_collection("foods").update_one(
             {"_id": food_obj_id},
             {"$set": {"popularity.rating": new_rating}}
         )

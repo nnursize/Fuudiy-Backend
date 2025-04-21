@@ -2,7 +2,7 @@ from server.database import database
 from bson import ObjectId
 import ast
 
-food_collection = database.get_collection("cleaned_foods")
+food_collection = database.get_collection("foods")
 
 # helpers
 
