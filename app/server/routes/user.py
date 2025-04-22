@@ -222,6 +222,7 @@ async def get_user_allergies_by_username(username: str):
     """
     # Find user by username
     user = await user_collection.find_one({"username": username})
+    print("user/allergies/{username} get_user_allergies_by_username user: ", user)
     if not user:
         raise HTTPException(status_code=404, detail=f"User with username '{username}' not found")
 
@@ -229,8 +230,10 @@ async def get_user_allergies_by_username(username: str):
 
     # Find survey responses for this user
     survey = await survey_collection.find_one({"user_id": user_id})
+    print("user/allergies/{username} get_user_allergies_by_username survey: ", survey)
     if not survey or "responses" not in survey:
-        raise HTTPException(status_code=404, detail=f"No survey data found for user '{username}'")
+        return ResponseModel([], f"No survey data found for user '{username}', returning empty allergy list.")
+
 
     allergies = survey["responses"].get("allergies", [])
     return ResponseModel(allergies, f"Allergies for user '{username}' retrieved successfully.")

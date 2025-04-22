@@ -24,12 +24,13 @@ router = APIRouter()
 
 @router.get("/me", tags=["Comment"], response_model=list)
 async def get_my_comments(user_id: str = Depends(get_current_user)):
+    print("AAAAAAget_my_comments")
     try:
-        # print("routes comment get_my_comments user_id: ", user_id)
+        print("routes comment get_my_comments user_id: ", user_id)
         comments = await retrieve_comments_for_user_id(user_id)
         print("routes comment get_my_comments comments: ", comments)
         if not comments:
-            raise HTTPException(status_code=404, detail="No comments found.")
+            return []
 
         return comments
     except Exception as e:
