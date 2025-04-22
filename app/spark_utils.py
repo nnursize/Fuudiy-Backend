@@ -4,6 +4,7 @@ import os
 
 #python_path = r"C:\\Users\\USER\\Desktop\\Fuudiy\\Fuudiy-Backend\\fenv\\Scripts\\python.exe"
 #python_path = r"D:\\OneDrive - TOBB Ekonomi ve Teknoloji Üniversitesi\\Masaüstü\\Fuudiy_Project\\Fuudiy-Backend\\.venv\\Scripts\\python.exe"
+python_path = "/usr/bin/python3.9"
 
 os.environ['PYSPARK_PYTHON'] = python_path
 os.environ['PYSPARK_DRIVER_PYTHON'] = python_path

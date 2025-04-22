@@ -32,7 +32,7 @@ async def retrieve_comments_for_food(food_id: str):
         {"$unwind": "$user"},  # Flatten the user array
         {
             "$lookup": {  # Join with foods collection
-                "from": "cleaned_foods",
+                "from": "foods",
                 "localField": "foodId",
                 "foreignField": "_id",
                 "as": "food"
@@ -79,7 +79,7 @@ async def retrieve_comments_for_user_name(user_name: str):
             # Join with the foods collection to get food details
             {
                 "$lookup": {
-                    "from": "cleaned_foods",
+                    "from": "foods",
                     "localField": "foodId",
                     "foreignField": "_id",
                     "as": "food"
@@ -119,7 +119,7 @@ async def retrieve_comments_for_user_id(user_id: str):
             {"$match": {"userId": user_id_obj}},  # Match comments by user
             {
                 "$lookup": {  # Join with foods collection
-                    "from": "cleaned_foods",
+                    "from": "foods",
                     "localField": "foodId",
                     "foreignField": "_id",
                     "as": "food"
