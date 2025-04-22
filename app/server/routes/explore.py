@@ -59,17 +59,12 @@ survey_df = load_food_data(spark, COLLECTION_SURVEY).cache()
 food_df = (
     load_food_data(spark, COLLECTION_FOOD)
     .select("_id", "country", "ingredients", "name", "url_id")
-    .withColumn(
-        "ingredients",
-        F.array_distinct(
-            F.transform(
-                F.col("ingredients"),  # operate directly on the array
-                lambda x: F.regexp_replace(F.lower(F.trim(x)), r"s$", "")
-            )
-        )
-    )
+    # Ensure ingredients column is array<string> and not empty
     .filter(F.size(F.col("ingredients")) > 0)
+    .filter(F.col("ingredients").isNotNull())  # Add null check
+    .cache()
 )
+
 
 def get_user_preferences(user_id):
     survey = survey_df.filter(F.col("user_id") == user_id).first()
@@ -84,40 +79,24 @@ def parse_prefs(value):
             return [x.strip().lower() for x in value.split(",")]
         return value if isinstance(value, list) else []
 
-def clean_ingredients(df):
-    return df.withColumn(
-        "clean_ingredients",
-        F.expr("""transform(
-            ingredients,
-            x -> regexp_replace(
-                lower(trim(regexp_replace(x, "'|\\\\[|\\\\]", ""))), 
-                's$', ''
-            )
-        )""")
-    )
-
 def filter_disliked_allergies(df, disliked, allergies=None):
-    # Combine disliked ingredients and allergies
-    all_exclusions = set(disliked)
+    # 1) Combine disliked + allergies into one flat list
+    all_exclusions = list(disliked)
     if allergies:
-        all_exclusions.update(allergies)
+        all_exclusions += list(allergies)
     
+    # 2) If there’s nothing to exclude, return original DF
     if not all_exclusions:
         return df
-    
-    # Clean combined exclusions
-    clean_exclusions = [
-        re.sub(r's$', '', ing.strip().lower())
-        for ing in all_exclusions
-        if ing.strip() and ing.strip() != 'on'
-    ]
-    
-    # Single cleaning and filtering operation
-    return clean_ingredients(df).filter(
-        F.size(F.array_intersect(
-            F.col("clean_ingredients"),
-            F.array([F.lit(ing) for ing in clean_exclusions])
-        )) == 0
+
+    # 3) Turn your exclusions into a Spark array literal
+    exclusion_array = F.array(*[F.lit(e) for e in all_exclusions])
+
+    # 4) Filter out any row whose raw ingredients overlap with exclusions
+    return df.filter(
+        F.size(
+            F.array_intersect(F.col("ingredients"), exclusion_array)
+        ) == 0
     )
 
 def calculate_ingredient_adjustments(prefs):
@@ -166,9 +145,8 @@ tfidf_pipeline = Pipeline(stages=[
     IDF(inputCol="rawFeatures", outputCol="features")
 ]).fit(food_df)
 
-#if 'food_df' in locals():
-#    food_df.unpersist()
-food_df = tfidf_pipeline.transform(food_df).cache()
+# Transform the data
+food_df = tfidf_pipeline.transform(food_df)
 #food_df.unpersist()
 vector_to_array = F.udf(lambda v: v.toArray().tolist(), ArrayType(DoubleType()))
 
@@ -349,7 +327,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), die
                 "name",
                 "country",
                 "url_id",
-                F.expr("transform(ingredients, x -> lower(trim(x)))").alias("ingredients"),
+                "ingredients",
                 "score"
             )
         )
@@ -450,7 +428,6 @@ async def get_similar_foods(food_id: str, country: str = Query(..., title="Targe
                 disliked=[],
                 allergies=exclusion_ingredients
             )
-
         return {
             "results": similar_foods.select(
                 "_id", "name", "country", "ingredients", "similarity", "url_id"
