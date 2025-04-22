@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     curl \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Set python3.9 as default
@@ -30,7 +31,7 @@ COPY ./app /app/app
 ENV PYTHONPATH=/app
 
 # Expose FastAPI port
-EXPOSE 5000
+EXPOSE 8000
 
 # Default start command
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
