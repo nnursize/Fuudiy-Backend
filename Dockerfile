@@ -23,7 +23,7 @@ RUN pip install --upgrade pip \
 
 # Set working directory to `app/` and copy only that
 WORKDIR /app
-COPY ./app /app/app
+COPY ./app /app
 
 ENV PYTHONPATH=/app
 ENV PORT=8000
