@@ -37,7 +37,7 @@ credentials_path = current_file.parents[2] / "gcs-key.json"
 router = APIRouter()
 food_collection = database.get_collection("foods")
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
+#os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
 BUCKET_NAME = "fuudiy_bucket"
 logger = logging.getLogger(__name__)
 
