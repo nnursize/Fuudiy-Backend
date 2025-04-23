@@ -29,6 +29,7 @@ COPY ./app /app/app
 
 
 ENV PYTHONPATH=/app
+ENV PORT=8000
 
 # Expose FastAPI port
 EXPOSE 8000
