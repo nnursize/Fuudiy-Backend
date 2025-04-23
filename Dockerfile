@@ -23,10 +23,10 @@ RUN pip install --upgrade pip \
 
 # Set working directory to `app/` and copy only that
 WORKDIR /app
-COPY ./app /app
+COPY ./app /app/app
 
 ENV PYTHONPATH=/app
 ENV PORT=8000
 
 # 👇 We are now *inside* the `app` directory, so we can reference app.py as `app`
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"]
