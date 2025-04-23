@@ -167,6 +167,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), die
         ingredient_adjustments = calculate_ingredient_adjustments(prefs)
 
         user_comments_df = load_food_data(spark, COLLECTION_USER_COMMENTS).cache()
+
         user_comments_filtered = user_comments_df.filter(F.col("userId") == user_id)
 
         commented_foods = user_comments_filtered.join(
@@ -259,7 +260,11 @@ async def recommend_foods(country: str = Query(..., title="Target country"), die
             ) \
             .orderBy(F.desc("similar_user_count"), F.desc("average_rating")) \
             .limit(5)  # Top 5 most popular among similar users
+        #print("**************")
+        #print(similarity_recommendations.count())
+        #print("**************")
         if similarity_recommendations.count() > 0:
+            #print("+++++++++++++++")
             similar_foods = similarity_recommendations.join(
                 food_df.select("_id", "name", "country", "ingredients", "url_id"),
                 F.col("foodId") == F.col("_id"),
@@ -274,7 +279,7 @@ async def recommend_foods(country: str = Query(..., title="Target country"), die
                 "average_rating"
             )
             allergies = set(parse_prefs(prefs.get("allergies")))
-
+            #print(allergies)
             if allergies or exclusion_ingredients:
                 similar_foods = filter_disliked_allergies(
                     similar_foods,
@@ -313,7 +318,8 @@ async def recommend_foods(country: str = Query(..., title="Target country"), die
         # ========== Combine Results ==========
         main_recommendations = recommendations.toJSON().collect()
         print("Successfully generated recommendations")
-
+        user_comments_df.unpersist()
+        survey_df.unpersist()
         return {
             "personalized_recommendations": main_recommendations,
             "similar_users_recommendations": similar_foods_json
