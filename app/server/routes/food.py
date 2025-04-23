@@ -137,11 +137,9 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
     """
 
     try:
-        # ✅ Convert IDs to ObjectId
         user_obj_id = ObjectId(user_id)
         food_obj_id = ObjectId(food_id)
 
-        # ✅ Find the user's comment
         user_comment = await database.get_collection("user_comments").find_one(
             {"userId": user_obj_id, "foodId": food_obj_id}
         )
@@ -151,29 +149,24 @@ async def update_food_rating(user_id: str, food_id: str, new_rate: int = Query(.
 
         old_rate = user_comment.get("rate", 0)
 
-        # ✅ Find the food item
         food = await database.get_collection("foods").find_one({"_id": food_obj_id})
         if not food:
             raise HTTPException(status_code=404, detail="Food not found")
 
-        # ✅ Get current popularity details
         popularity = food.get("popularity", {"rating": 0, "votes": 0})
         current_rating = popularity.get("rating", 0)
         votes = popularity.get("votes", 0)
 
-        # ✅ Recalculate the new rating
         if votes > 0:
             new_rating = ((current_rating * votes) - old_rate + new_rate) / votes
         else:
             new_rating = new_rate  # If no previous votes, take new rate as rating
 
-        # ✅ Update the food's popularity
         await database.get_collection("foods").update_one(
             {"_id": food_obj_id},
             {"$set": {"popularity.rating": new_rating}}
         )
 
-        # ✅ Update the user's rating in the `user_comments` collection
         update_successful = await update_rate_for_comment(user_id, food_id, new_rate)
 
         if not update_successful:
@@ -211,20 +204,16 @@ async def update_food_popularity(food_id: str, data: dict = Body(...)):
 
         print(f"Parsed values: new_rating={new_rating}, existing_vote={existing_vote}")
 
-        # Retrieve the current food document
         food = await food_collection.find_one({"_id": food_obj_id})
         if not food:
             raise HTTPException(status_code=404, detail="Food not found.")
 
         print(f"Existing food data: {food}")
 
-        # Get current votes
         current_votes = food.get("popularity", {}).get("votes", 0)
 
-        # Determine new vote count
         new_votes = current_votes if existing_vote else current_votes + 1
 
-        # Update the database
         update_data = {
             "popularity.rating": round(new_rating, 1),
             "popularity.votes": new_votes
